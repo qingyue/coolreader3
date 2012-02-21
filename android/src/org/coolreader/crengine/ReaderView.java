@@ -15,6 +15,9 @@ import org.coolreader.CoolReader;
 import org.coolreader.R;
 import org.coolreader.crengine.Engine.HyphDict;
 
+import com.onyx.android.sdk.ui.util.ScreenUpdateManager;
+import com.onyx.android.sdk.ui.util.ScreenUpdateManager.UpdateMode;
+
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -662,6 +665,8 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			repeatActionActive = true;
 			onAction(actionToRepeat, new Runnable() {
 				public void run() {
+				    L.d("action is compeleted");
+				    ScreenUpdateManager.invalidate(ReaderView.this, UpdateMode.GC);
 					if ( trackedKeyEvent==event ) {
 						log.v("action is completed : " + actionToRepeat );
 						repeatActionActive = false;
@@ -2373,15 +2378,15 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
             syncViewSettings(getSettings(), true);
             break;
 		case DCMD_PAGEDOWN:
-			if ( param==1 )
-				animatePageFlip(1, onFinishHandler);
-			else
+//			if ( param==1 )
+//				animatePageFlip(1, onFinishHandler);
+//			else
 				doEngineCommand(cmd, param, onFinishHandler);
 			break;
 		case DCMD_PAGEUP:
-			if ( param==1 )
-				animatePageFlip(-1, onFinishHandler);
-			else
+//			if ( param==1 )
+//				animatePageFlip(-1, onFinishHandler);
+//			else
 				doEngineCommand(cmd, param, onFinishHandler);
 			break;
 		case DCMD_BEGIN:
@@ -2431,7 +2436,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	public void doEngineCommand( final ReaderCommand cmd, final int param, final Runnable doneHandler )
 	{
 		BackgroundThread.ensureGUI();
-		log.d("doCommand("+cmd + ", " + param +")");
+		L.d("doCommand("+cmd + ", " + param +")");
 		post(new Task() {
 			boolean res;
 			public void work() {
@@ -3157,6 +3162,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			log.e("DrawPageTask.work("+internalDX+","+internalDY+")");
 			bi = preparePageImage(0);
 			if ( bi!=null ) {
+			    L.d("draw image in DrawPageTask");
 				draw(isPartially);
 			}
 		}
@@ -3170,6 +3176,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 //				invalidate();
 //			}
 //    		if (mOpened)
+			ScreenUpdateManager.invalidate(ReaderView.this, UpdateMode.GC);
    			mEngine.hideProgress();
    			if ( doneHandler!=null )
    				doneHandler.run();
@@ -3542,9 +3549,11 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 				//log.v("before draw(canvas)");
 				if ( canvas!=null ) {
 					if (DeviceInfo.EINK_SCREEN){
-						EinkScreen.PrepareController(this, isPartially);
+					    Log.d("cr3", "eink screen");
+//						EinkScreen.PrepareController(this, isPartially);
 					}
 					callback.drawTo(canvas);
+					ScreenUpdateManager.invalidate(this, ScreenUpdateManager.UpdateMode.GC);
 				}
 			} finally {
 				//log.v("exiting finally");
@@ -4290,7 +4299,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	{
 		if ( !mInitialized || !mOpened )
 			return;
-		log.v("drawPage() : submitting DrawPageTask");
+		L.d("drawPage() : submitting DrawPageTask");
 		post( new DrawPageTask(doneHandler, isPartially) );
 	}
 	
@@ -4420,6 +4429,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	}
 	
 	private void drawDimmedBitmap( Canvas canvas, Bitmap bmp, Rect src, Rect dst ) {
+	    L.d("drawDimmedBitmap entered");
 		canvas.drawBitmap(bmp, src, dst, null);
 		dimRect( canvas, dst );
 	}
@@ -4495,7 +4505,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
     @Override 
     protected void onDraw(Canvas canvas) {
     	try {
-    		log.d("onDraw() called");
+    		L.d("onDraw() called");
     		draw();
 //    		if ( mInitialized && mBitmap!=null ) {
 //        		log.d("onDraw() -- drawing page image");

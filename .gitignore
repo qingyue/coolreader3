@@ -6,4 +6,11 @@ wxbuild
 qtbuild
 qt-build
 qtcreator-build
+Debug/
+android/.classpath
+android/.project
+android/default.properties
+android/project.properties
+android/jni/cr3engine.map
+android/lint.xml
 *~

@@ -1,6 +1,10 @@
 package org.coolreader.crengine;
 
 import org.coolreader.crengine.N2EpdController;
+
+import com.onyx.android.sdk.ui.util.ScreenUpdateManager;
+
+import android.util.Log;
 import android.view.View;
 
 public class EinkScreen {
@@ -19,6 +23,8 @@ public class EinkScreen {
 	public final static int cmodeActive = 2;
 
 	public static void PrepareController(View view, boolean isPartially) {
+	    L.d("PrepareController entered");
+	    
 		if (DeviceInfo.EINK_NOOK) {
 			//System.err.println("Sleep = " + isPartially);
 			if (isPartially || IsSleep != isPartially) {
@@ -82,9 +88,15 @@ public class EinkScreen {
 			}
 			*/
 		}
+		else if (DeviceInfo.EINK_BOOX) {
+		    Log.d("cr3", "eink_book screen");
+		    ScreenUpdateManager.invalidate(view, ScreenUpdateManager.UpdateMode.GC);
+		}
 	}
 
 	public static void ResetController(int mode, View view) {
+	    L.d("ResetController entered");
+	    
 		if (!DeviceInfo.EINK_NOOK) { return; }
 		System.err.println("+++ResetController " + mode);
 		switch (mode) {
@@ -105,6 +117,8 @@ public class EinkScreen {
 		UpdateMode = mode;
 	}
 	public static void ResetController(View view) {
+	    L.d("ResetController entered");
+	    
 		if (!DeviceInfo.EINK_NOOK || UpdateMode == cmodeClear) { return; }
 		System.err.println("+++Soft reset Controller ");
 		SetMode(view, cmodeClear);
@@ -112,6 +126,8 @@ public class EinkScreen {
 	}
 
 	public static void SleepController(boolean toSleep, View view) {
+	    L.d("SleepController entered");
+	    
 		if (!DeviceInfo.EINK_NOOK || toSleep == IsSleep) {
 			return;
 		}
@@ -134,6 +150,8 @@ public class EinkScreen {
 	}
 	
 	private static void SetMode(View view, int mode) {
+	    L.d("SetMode entered");
+	    
 		switch (mode) {
 		case cmodeClear:	
 			N2EpdController.setMode(N2EpdController.REGION_APP_3,

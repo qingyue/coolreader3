@@ -16,6 +16,7 @@ public class DeviceInfo {
 	public final static boolean FORCE_LIGHT_THEME;
 	public final static boolean EINK_SONY;
 	public final static boolean SONY_NAVIGATION_KEYS;
+	public final static boolean EINK_BOOX;
 	
 	static {
 		MANUFACTURER = getBuildField("MANUFACTURER");
@@ -26,7 +27,10 @@ public class DeviceInfo {
 		EINK_NOOK = MANUFACTURER.toLowerCase().contentEquals("barnesandnoble") && MODEL.contentEquals("NOOK") &&
 				DEVICE.toLowerCase().contentEquals("zoom2");
 		EINK_SONY = MANUFACTURER.toLowerCase().contentEquals("sony") && MODEL.contentEquals("PRS-T1");
-		EINK_SCREEN = EINK_SONY || EINK_NOOK; // TODO: set to true for eink devices like Nook Touch
+		
+		EINK_BOOX = true;
+		
+		EINK_SCREEN = EINK_SONY || EINK_NOOK || EINK_BOOX; // TODO: set to true for eink devices like Nook Touch
 		
 		NOOK_NAVIGATION_KEYS = EINK_NOOK; // TODO: add autodetect
 		SONY_NAVIGATION_KEYS = EINK_SONY;
