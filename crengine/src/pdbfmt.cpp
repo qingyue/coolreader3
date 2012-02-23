@@ -1,6 +1,9 @@
 #include "../include/pdbfmt.h"
 #include <ctype.h>
 
+// uncomment following line to save PDB content streams to /tmp
+//#define DUMP_PDB_CONTENTS
+
 struct PDBHdr
 {
     lUInt8    name[32];
@@ -144,8 +147,8 @@ struct MobiPreamble : public PalmDocPreamble
     lUInt32 drmFlags; //    176	4	DRM Flags	Some flags concerning the DRM info.
 
 
-    bool read( LVStreamRef stream ) {
-        // TODO: byte order support
+    bool read( LVStreamRef stream, lUInt16 & extraDataFlags ) {
+        extraDataFlags = 0;
         lvsize_t bytesRead = 0;
         if ( stream->Read(this, sizeof(MobiPreamble), &bytesRead )!=LVERR_OK )
             return false;
@@ -187,6 +190,15 @@ struct MobiPreamble : public PalmDocPreamble
             return false; // unsupported type
         if ( mobiEncryption!=0 )
             return false; // encryption is not supported
+        if (hederLength == 0xE4 || hederLength == 0xE8) {
+            stream->Seek(242-180, LVSEEK_CUR, NULL);
+            stream->Read(&extraDataFlags);
+            if ( cnv.lsf() )
+                cnv.rev(&extraDataFlags);
+//            if (extraDataFlags) {
+//                CRLog::trace("extraDataFlags=%04x", (int)extraDataFlags);
+//            }
+        }
         return true;
     }
 };
@@ -370,6 +382,16 @@ static bool pattern_cmp( const lUInt8 * buf, const char * pattern ) {
 }
 
 class PDBFile : public LVNamedStream {
+public:
+    enum Format {
+        UNKNOWN,
+        PALMDOC,
+        EREADER,
+        PLUCKER,
+        MOBI,
+    };
+private:
+
     struct Record {
         lUInt32 offset;
         lUInt32 size;
@@ -378,27 +400,22 @@ class PDBFile : public LVNamedStream {
     };
     LVArray<Record> _records;
     LVStreamRef _stream;
-    enum Format {
-        UNKNOWN,
-        PALMDOC,
-        EREADER,
-        PLUCKER,
-        MOBI,
-    };
     Format _format;
     int _compression;
     lUInt32 _textSize;
-    int _recordCount;
+    int _recordCount; // text record count
     // read buffer
     LVArray<lUInt8> _buf;
     int     _bufIndex;
     lvpos_t _bufOffset;
     lvsize_t _bufSize;
     lvpos_t _pos;
+    lUInt16 _mobiExtraDataFlags;
+    CRPropRef m_doc_props;
     //LVPDBContainer * _container;
     bool unpack( LVArray<lUInt8> & dst, LVArray<lUInt8> & src ) {
         int srclen = src.length();
-        dst.clear();
+        dst.reset();
         dst.reserve(srclen);
 
         if ( _compression==2 ) {
@@ -410,22 +427,33 @@ class PDBFile : public LVNamedStream {
                 b = src[pos];
                 pos++;
                 if (b > 0 && b < 9) {
+                    // 1..8 bytes follow
+                    if (pos + b > srclen)
+                        break;
                     for (int i=0; i<(int)b; i++)
                         dst.add(src[pos++]);
                 } else if (b < 128) {
+                    // unmodified single byte
                     dst.add((lUInt8)b);
-                } else if (b > 0xc0) {
+                } else if (b >= 0xc0) {
                     dst.add(' ');
                     dst.add(b & 0x7f);
                 } else {
                     if (pos >= srclen)
                         break;
-                    int z = ((int)b << 8) | src[pos];
+                    lUInt32 z = ((b & 0x3f) << 8) + src[pos];
                     pos++;
-                    int m = (z & 0x3fff) >> 3;
-                    int n = (z & 7) + 3;
-                    for (int i=0; i<n; i++)
-                        dst.add(dst[dst.length()-m]);
+                    int offset = z >> 3;
+                    int size = (z & 7) + 3;
+                    int srcpos = dst.length() - offset;
+                    for (int i = 0; i < size; i++) {
+                        if (srcpos >= 0) {
+                            dst.add(dst[srcpos++]);
+                        } else {
+                            dst.add('?');
+                            //CRLog::trace("wrong offset");
+                        }
+                    }
                 }
             }
         } else if ( _compression==10 ) {
@@ -439,6 +467,7 @@ class PDBFile : public LVNamedStream {
             free(dstbuf);
         } else if ( _compression==17480 ) {
             // zlib
+            // TODO: shouldn't it be HUFFMAN unpacker?
             /// unpack data from _compbuf to _buf
             lUInt8 * dstbuf;
             lUInt32 dstsize;
@@ -450,20 +479,90 @@ class PDBFile : public LVNamedStream {
         return true;
     }
 
+    void removeExtraData(int index, LVArray<lUInt8> & buf) {
+        if (index >= _records.length() || !_mobiExtraDataFlags)
+            return;
+        for (int flag = 0x8000; flag; flag >>= 1) {
+            if (!(_mobiExtraDataFlags & flag))
+                continue;
+            lUInt32 n = buf[buf.length()-1];
+            if (flag == 1) {
+                n &= 3;
+
+                _records[index].size -= 1;
+                buf.erase(buf.length()-1, 1);
+
+                if (n>0) {
+                    //CRLog::trace("block %d: removing %d bytes of multibyte character", index, n);
+
+                    for (int i=n; i>0; i--) {
+                        n = buf[buf.length() - 1];
+                        if (!(n & 0x80))
+                            break;
+                        buf.erase(buf.length() - 1, 1);
+                        if ((n & 0xC0) != 0x80)
+                            break;
+                    }
+                }
+
+            } else {
+                if (!(n & 0x80)) {
+                    lUInt32 n2 = buf[buf.length()-2];
+                    n = (n & 0x7F) | ((n2 & 0x7F) << 16);
+                } else {
+                    n = n & 0x7F;
+                }
+                if (n > 0 && buf.length() >= n) {
+                    //CRLog::trace("block %d: removing %d bytes of extra data type %d", index, n, flag);
+                    _records[index].size -= n;
+                    buf.erase(buf.length()-n, n);
+                }
+            }
+//            if (n && buf.length() >= n) {
+//                _records[index].size -= n;
+//                buf.erase(buf.length()-n, n);
+
+//                if (flag == 1 && n > 1) {
+//                    CRLog::trace("block %d: removing %d bytes of multibyte character", index, n - 1);
+//                    // remove extra utf-8 points
+//                    while (buf.length()) {
+//                        n = buf[buf.length() - 1];
+//                        if (!(n & 0x80))
+//                            break;
+//                        buf.erase(buf.length() - 1, 1);
+//                        if ((n & 0xC0) != 0x80)
+//                            break;
+//                    }
+//                }
+//            }
+        }
+    }
+
+    bool readRecordNoUnpack(int index, LVArray<lUInt8> * dstbuf) {
+        if (index >= _records.length())
+            return false;
+        dstbuf->reset();
+        dstbuf->addSpace(_records[index].size);
+        lvsize_t bytesRead = 0;
+        _stream->SetPos(_records[index].offset);
+        if (_stream->Read(dstbuf->get(), _records[index].size, &bytesRead) != LVERR_OK)
+            return false;
+        if (bytesRead != _records[index].size)
+            return false;
+        return true;
+    }
     bool readRecord( int index, LVArray<lUInt8> * dstbuf ) {
-        if ( index>=_records.length() )
+        if (index >= _records.length())
             return false;
         LVArray<lUInt8> srcbuf;
         LVArray<lUInt8> * buf = _compression ? &srcbuf : dstbuf;
-        buf->clear();
-        buf->addSpace(_records[index].size);
-        lvsize_t bytesRead = 0;
-        _stream->SetPos(_records[index].offset);
-        if ( _stream->Read(buf->get(), _records[index].size, &bytesRead )!=LVERR_OK )
+        if (!readRecordNoUnpack(index, buf))
             return false;
-        if ( bytesRead!=_records[index].size )
-            return false;
-        if ( !_compression )
+
+        if (_mobiExtraDataFlags && index < _recordCount)
+            removeExtraData(index, *buf);
+
+        if (!_compression)
             return true;
         // unpack
         return unpack(*dstbuf, srcbuf);
@@ -564,6 +663,10 @@ public:
         }
     }
 
+    CRPropRef getDocProps() {
+        return m_doc_props;
+    }
+
     bool open( LVStreamRef stream, LVPDBContainer * container, bool validateContent, doc_format_t & contentFormat ) {
         contentFormat = doc_format_none;
         _format = UNKNOWN;
@@ -647,7 +750,7 @@ public:
                 return false;
             MobiPreamble preamble;
             stream->SetPos(_records[0].offset);
-            if ( !preamble.read(stream) )
+            if ( !preamble.read(stream, _mobiExtraDataFlags) )
                 return false; // invalid preamble
             if ( preamble.recordCount>=_records.length() )
                 return false;
@@ -656,9 +759,66 @@ public:
                 _compression = 0;
             _textSize = preamble.textLength;
             _recordCount = preamble.firstNonBookIndex - 1;
-            if ( container ) {
+            lUInt32 coverOffset = (lUInt32)-1;
+            lUInt32 thumbOffset = 0;
+            if (preamble.mobiFlags & 0x40) {
+                // EXTH present
+                stream->SetPos(_records[0].offset + 16 + preamble.hederLength);
+                char exth_tag[4] = {0, 0, 0, 0};
+                stream->Read(&exth_tag, 4, NULL);
+                if (exth_tag[0] == 'E' && exth_tag[1] == 'X' && exth_tag[2] == 'T' && exth_tag[3] == 'H') {
+                	CRLog::trace("EXTH record found");
+                    lUInt32 hdrLen = 0;
+                    lUInt32 recCount = 0;
+                    lvByteOrderConv cnv;
+                    stream->Read(&hdrLen);
+                    stream->Read(&recCount);
+                    if ( cnv.lsf() ) {
+                        cnv.rev(&hdrLen);
+                        cnv.rev(&recCount);
+                    }
+                    LVArray<lUInt8> buf;
+                    for (int i=0; i<recCount; i++) {
+                        lUInt32 recType = 0;
+                        lUInt32 recLen = 0;
+                        stream->Read(&recType);
+                        stream->Read(&recLen);
+                        if ( cnv.lsf() ) {
+                            cnv.rev(&recType);
+                            cnv.rev(&recLen);
+                        }
+                        buf.reset();
+                        if (recLen > 8) {
+                            lvpos_t nextPos = stream->GetPos() + recLen - 8;
+                            //================================
+                            if (recLen == 12 && recType == 201) {
+                                stream->Read(&coverOffset);
+                                cnv.msf(&coverOffset);
+                            } else if (recLen == 12 && recType == 202) {
+                                stream->Read(&thumbOffset);
+                                cnv.msf(&thumbOffset);
+                            } else {
+                                buf.addSpace(recLen);
+                                if (stream->Read(buf.get(), recLen - 8, NULL) != LVERR_OK)
+                                    break;
+                                if (recType == 100) {
+                                    lString8 author((const char *)buf.get());
+                                    CRLog::trace("MOBI author: %s", author.c_str());
+                                    m_doc_props->setString(DOC_PROP_AUTHORS, Utf8ToUnicode(author));
+                                } else if (recType == 105) {
+                                    lString8 s((const char *)buf.get());
+                                    CRLog::trace("MOBI subject: %s", s.c_str());
+                                    m_doc_props->setString(DOC_PROP_TITLE, Utf8ToUnicode(s));
+                                }
+                            }
+                            //================================
+                            stream->SetPos(nextPos);
+                        }
+                    }
+                }
+            }
+            if (container) {
                 for ( int index=preamble.firstImageIndex; index<_records.length(); index++ ) {
-                    _records[index].offset;
                     stream->SetPos(_records[index].offset);
                     lUInt8 buf[256];
                     stream->Read(buf, 16, NULL);
@@ -674,7 +834,10 @@ public:
                         lString16 name = lString16(MOBI_IMAGE_NAME_PREFIX) + lString16::itoa((int)(index-preamble.firstImageIndex));
                         //CRLog::debug("Adding image %s [%d] %s", LCSTR(name), _records[index].size, fmt);
                         container->addItem( new LVPDBRegionContainerItem( stream, this, name, _records[index].offset, _records[index].size ) );
-                        // TODO: set coverpage
+                        if (index == preamble.firstImageIndex + coverOffset) {
+                            m_doc_props->setString(DOC_PROP_COVER_FILE, name);
+                            CRLog::trace("MOBI COVER: %s", LCSTR(name));
+                        }
                     }
                 }
             }
@@ -697,7 +860,39 @@ public:
             return false;
         }
 
-        detectFormat( contentFormat );
+//        if (_mobiExtraDataFlag) {
+//            // remove extra data
+//            for ( int k=1; k<_recordCount; k++ )
+//                _records[k+1].size -= 6;
+//        }
+
+//#ifdef DUMP_PDB_CONTENTS
+//        int unpoffset2 = 0;
+//        FILE * out = fopen("/tmp/pdbout.txt", "wb");
+//        int k;
+//        for (k=1; k <= _recordCount && unpoffset2 < this->_textSize; k++) {
+//            LVArray<lUInt8> dst;
+//            readRecordNoUnpack(k, &_buf);
+//            if (_mobiExtraDataFlags) {
+//                removeExtraData(k, _buf);
+////                    int b = _buf[_buf.length()-1];
+////                    CRLog::trace("Extra data: %d bytes", b);
+////                    _records[k].size -= b;
+////                    _buf.erase(_buf.length()-1-b, b);
+//            }
+//            if (_compression == 2) {
+//                unpack(dst, _buf);
+//                _records[k].unpoffset = unpoffset2;
+//                _records[k].unpsize = dst.length();
+//                unpoffset2 += dst.length();
+//                fwrite(dst.get(), dst.length(), 1, out);
+//                fprintf(out, "\n[block %d end]\n", k);
+//            }
+//            CRLog::trace("record[%d] : %06x %06x -  %06x %06x", k, _records[k].offset, _records[k].size, _records[k].unpoffset, _records[k].unpsize);
+//        }
+//        fclose(out);
+//        CRLog::trace("totalUncompSizeHdr=%06x realUncompSize=%06x %d blocks of %d", this->_textSize, unpoffset2, k, _records.length());
+//#endif
 
         if ( !validateContent )
             return true; // for simple format check
@@ -706,20 +901,57 @@ public:
         lUInt32 unpoffset = 0;
         _crc = 0;
         for ( int k=0; k<_recordCount; k++ ) {
+
             readRecord(k+1, &buf);
             _records[k+1].unpoffset = unpoffset;
             _records[k+1].unpsize = buf.length();
             unpoffset += buf.length();
             _crc = lStr_crc32( _crc, buf.get(), buf.length() );
-//            if ( unpoffset>=_textSize ) {
-//                _recordCount = k;
-//                break;
-//            }
         }
+        _mobiExtraDataFlags = 0;
+
+
+        detectFormat( contentFormat );
+
+
+
+        #ifdef DUMP_PDB_CONTENTS
+        {
+                int unpoffset2 = 0;
+                FILE * out = fopen("/tmp/pdbout.txt", "wb");
+                int k;
+                for (k=1; k <= _recordCount && unpoffset2 < this->_textSize; k++) {
+                    LVArray<lUInt8> dst;
+                    readRecordNoUnpack(k, &_buf);
+//                    if (_mobiExtraDataFlags) {
+//                        removeExtraData(k, _buf);
+        //                    int b = _buf[_buf.length()-1];
+        //                    CRLog::trace("Extra data: %d bytes", b);
+        //                    _records[k].size -= b;
+        //                    _buf.erase(_buf.length()-1-b, b);
+//                    }
+                    if (_compression == 2) {
+                        unpack(dst, _buf);
+                        _records[k].unpoffset = unpoffset2;
+                        _records[k].unpsize = dst.length();
+                        unpoffset2 += dst.length();
+                        fwrite(dst.get(), dst.length(), 1, out);
+                        fprintf(out, "\n[block %d end]\n", k);
+                    }
+                    CRLog::trace("record[%d] : %06x %06x -  %06x %06x", k, _records[k].offset, _records[k].size, _records[k].unpoffset, _records[k].unpsize);
+                }
+                fclose(out);
+                CRLog::trace("totalUncompSizeHdr=%06x realUncompSize=%06x %d blocks of %d", this->_textSize, unpoffset2, k, _records.length());
+        }
+        #endif
+
         if ( _textSize==-1 )
             _textSize = unpoffset;
-        else if ( unpoffset<_textSize )
-            return false; // text size does not match
+        else if ( unpoffset<_textSize ) {
+            CRLog::warn("PDB: Unpacked text size is %d but expected %d", unpoffset, _textSize);
+            _textSize = unpoffset;
+            //return false; // text size does not match
+        }
 
 
         _bufIndex = -1;
@@ -851,9 +1083,14 @@ public:
         return _pos>=_textSize;
     }
 
+    Format getFormat() { return _format; }
+
     /// Constructor
     PDBFile() {
         //_container.AddRef();
+        _bufIndex = -1;
+        _mobiExtraDataFlags = 0;
+        m_doc_props = LVCreatePropsContainer();
     }
 
     /// Destructor
@@ -881,6 +1118,55 @@ bool DetectPDBFormat( LVStreamRef stream, doc_format_t & contentFormat )
     return true;
 }
 
+bool isCorrectUtf8Text(LVStreamRef & stream) {
+    char enc_name[32];
+    char lang_name[32];
+    lvpos_t oldpos = stream->GetPos();
+    unsigned sz = 16384;
+    stream->SetPos( 0 );
+    if ( sz>stream->GetSize() )
+        sz = stream->GetSize();
+    if (sz < 8)
+        return false;
+    unsigned char * buf = new unsigned char[ sz ];
+    lvsize_t bytesRead = 0;
+    if ( stream->Read( buf, sz, &bytesRead )!=LVERR_OK ) {
+        delete[] buf;
+        stream->SetPos( oldpos );
+        return false;
+    }
+
+    int res = 0;
+    res = AutodetectCodePageUtf(buf, sz, enc_name, lang_name);
+    delete[] buf;
+    return res != 0;
+}
+
+LVStreamRef GetPDBCoverpage(LVStreamRef stream)
+{
+    doc_format_t contentFormat = doc_format_none;
+    PDBFile * pdb = new PDBFile();
+    LVPDBContainer * container = new LVPDBContainer();
+    if (!pdb->open(stream, container, false, contentFormat)) {
+        delete container;
+        delete pdb;
+        return LVStreamRef();
+    }
+    stream = LVStreamRef(pdb);
+    LVContainerRef cnt(container);
+    container->setStream(stream);
+    LVStreamRef coverStream;
+    lString16 coverName = pdb->getDocProps()->getStringDef(DOC_PROP_COVER_FILE);
+    if (!coverName.empty()) {
+        coverStream = cnt->OpenStream(coverName.c_str(), LVOM_READ);
+    }
+    if (!coverStream.isNull()) {
+        CRLog::trace("Found PDB coverpage image");
+        return LVCreateMemoryStream(coverStream);
+    }
+    return LVStreamRef();
+ }
+
 bool ImportPDBDocument( LVStreamRef & stream, ldomDocument * doc, LVDocViewCallback * progressCallback, CacheLoadingCallback * formatCallback, doc_format_t & contentFormat )
 {
     contentFormat = doc_format_none;
@@ -888,8 +1174,10 @@ bool ImportPDBDocument( LVStreamRef & stream, ldomDocument * doc, LVDocViewCallb
     LVPDBContainer * container = new LVPDBContainer();
     if ( !pdb->open(stream, container, true, contentFormat) ) {
         delete container;
+        delete pdb;
         return false;
     }
+    pdb->getDocProps()->set(doc->getProps());
     stream = LVStreamRef(pdb);
     container->setStream(stream);
     doc->setContainer(LVContainerRef(container));
@@ -902,19 +1190,22 @@ bool ImportPDBDocument( LVStreamRef & stream, ldomDocument * doc, LVDocViewCallb
         return true;
     }
 #endif
+    doc->getProps()->set(pdb->getDocProps());
 
     switch ( contentFormat ) {
     case doc_format_html:
         // HTML
         {
+
             ldomDocumentWriterFilter writerFilter(doc, false,
                     HTML_AUTOCLOSE_TABLE);
-
             LVHTMLParser parser(stream, &writerFilter);
             parser.setProgressCallback(progressCallback);
             if ( !parser.CheckFormat() ) {
                 return false;
             } else {
+                if (pdb->getFormat()==PDBFile::MOBI && isCorrectUtf8Text(stream))
+                    parser.SetCharset(L"utf-8");
                 if (!parser.Parse()) {
                     return false;
                 }
@@ -954,6 +1245,34 @@ bool ImportPDBDocument( LVStreamRef & stream, ldomDocument * doc, LVDocViewCallb
         }
         break;
     }
+#ifdef DUMP_PDB_CONTENTS
+    for (int i=0; i<container->GetObjectCount(); i++) {
+        const LVContainerItemInfo * item = container->GetObjectInfo(i);
+        if (item->IsContainer())
+            continue;
+        lString16 fn = item->GetName();
+        if (fn.empty())
+            fn = lString16("pdb_item_") + lString16::itoa(i);
+        fn = lString16("/tmp/") + fn;
+        LVStreamRef in = container->OpenStream(item->GetName(), LVOM_READ);
+        if (in.isNull())
+            continue;
+        LVStreamRef out = LVOpenFileStream(fn.c_str(), LVOM_WRITE);
+        if (out.isNull())
+            continue;
+        CRLog::trace("Dumping stream %s (%d)", LCSTR(fn), (int)item->GetSize());
+        LVPumpStream(out.get(), in.get());
+    }
+    {
+        LVStreamRef out = LVOpenFileStream("/tmp/pdb_main.txt", LVOM_WRITE);
+        if (!out.isNull()) {
+            stream->SetPos(0);
+            CRLog::trace("Dumping stream /tmp/pdb_main.txt (%d)", (int)stream->GetSize());
+            LVPumpStream(out.get(), stream.get());
+            stream->SetPos(0);
+        }
+    }
+#endif
 
     return true;
 }

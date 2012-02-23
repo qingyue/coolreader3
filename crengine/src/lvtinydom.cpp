@@ -12,7 +12,10 @@
 *******************************************************/
 
 /// change in case of incompatible changes in swap/cache file format to avoid using incompatible swap file
-#define CACHE_FILE_FORMAT_VERSION "3.04.06"
+// increment to force complete reload/reparsing of old file
+#define CACHE_FILE_FORMAT_VERSION "3.04.32"
+/// increment following value to force re-formatting of old book after load
+#define FORMATTING_VERSION_ID 0x0003
 
 #ifndef DOC_DATA_COMPRESSION_LEVEL
 /// data compression level (0=no compression, 1=fast compressions, 3=normal compression)
@@ -123,6 +126,7 @@ enum CacheFileBlockType {
     CBT_STYLE_DATA,
     CBT_BLOB_INDEX, //15
     CBT_BLOB_DATA,
+    CBT_FONT_DATA, //17
 };
 
 
@@ -269,10 +273,11 @@ static lUInt64 calcHash64( const lUInt8 * s, int len )
 
 lUInt32 calcGlobalSettingsHash()
 {
-    lUInt32 hash = 0;
+    lUInt32 hash = FORMATTING_VERSION_ID;
     if ( fontMan->getKerning() )
         hash += 127365;
     hash = hash * 31 + fontMan->GetFontListHash();
+    hash = hash * 31 + (int)fontMan->GetHintingMode();
     if ( LVRendGetFontEmbolden() )
         hash = hash * 75 + 2384761;
     if ( gFlgFloatingPunctuationEnabled )
@@ -360,7 +365,7 @@ struct CacheFileHeader : public SimpleCacheFileHeader
     // duplicate of one of index records which contains
     bool validate()
     {
-        if ( memcmp( _magic, CACHE_FILE_MAGIC, CACHE_FILE_MAGIC_SIZE ) ) {
+        if (memcmp(_magic, CACHE_FILE_MAGIC, CACHE_FILE_MAGIC_SIZE) != 0) {
             CRLog::error("CacheFileHeader::validate: magic doesn't match");
             return false;
         }
@@ -1085,7 +1090,7 @@ ldomBlobCache::ldomBlobCache() : _cacheFile(NULL), _changed(false)
 
 bool ldomBlobCache::loadIndex()
 {
-    bool res = true;
+    bool res;
     SerialBuf buf(0,true);
     res = _cacheFile->read(CBT_BLOB_INDEX, buf);
     if (!res) {
@@ -1113,7 +1118,7 @@ bool ldomBlobCache::loadIndex()
 
 bool ldomBlobCache::saveIndex()
 {
-    bool res = true;
+    bool res;
     SerialBuf buf(0,true);
     buf.putMagic(BLOB_INDEX_MAGIC);
     lUInt32 len = _list.length();
@@ -2403,8 +2408,8 @@ void ldomTextStorageChunk::setRaw( int offset, int size, const lUInt8 * buf )
     if ( !_buf || offset+size>(int)_bufpos || offset+size>(int)_bufsize )
         crFatalError(123, "ldomTextStorageChunk: Invalid raw data buffer position");
 #endif
-    if ( memcmp( _buf+offset, buf, size ) ) {
-        memcpy( _buf+offset, buf, size );
+    if (memcmp(_buf+offset, buf, size) != 0) {
+        memcpy(_buf+offset, buf, size);
         modified();
     }
 }
@@ -3010,6 +3015,7 @@ bool ldomDocument::saveToStream( LVStreamRef stream, const char *, bool treeLayo
 
 ldomDocument::~ldomDocument()
 {
+    fontMan->UnregisterDocumentFonts(_docIndex);
 #if BUILD_LITE!=1
     updateMap();
 #endif
@@ -4001,6 +4007,9 @@ bool ldomNode::applyNodeStylesheet()
 #ifndef DISABLE_STYLESHEET_REL
     if ( getNodeId()!=el_DocFragment || !hasAttribute(attr_StyleSheet) )
         return false;
+    if (!getDocument()->getDocFlag(DOC_FLAG_ENABLE_INTERNAL_STYLES))
+        return false; // internal styles are disabled
+
     lString16 v = getAttributeValue(attr_StyleSheet);
     if ( v.empty() )
         return false;
@@ -4342,15 +4351,15 @@ private:
                             bytesRead += 2;
                         }
                         // stop!!!
-                        m_text_pos--;
+                        //m_text_pos--;
+                        m_iteration = 0;
                         flgEof = true;
                         break;
                     }
                     else
                     {
                         int k = base64_decode_table[ch];
-                        if ( !(k & 0x80) )
-                        {
+                        if ( !(k & 0x80) ) {
                             // next base-64 digit
                             m_value = (m_value << 6) | (k);
                             m_iteration++;
@@ -4364,6 +4373,8 @@ private:
                                 m_value = 0;
                                 bytesRead+=3;
                             }
+                        } else {
+                            //m_text_pos++;
                         }
                     }
                 }
@@ -5173,9 +5184,9 @@ lString16 extractDocAuthors( ldomDocument * doc, lString16 delimiter, bool short
             //CRLog::trace( "xpath not found: %s", UnicodeToUtf8(path).c_str() );
             break;
         }
-        lString16 firstName = pauthor.relative( L"/first-name" ).getText();
-        lString16 lastName = pauthor.relative( L"/last-name" ).getText();
-        lString16 middleName = pauthor.relative( L"/middle-name" ).getText();
+        lString16 firstName = pauthor.relative( L"/first-name" ).getText().trim();
+        lString16 lastName = pauthor.relative( L"/last-name" ).getText().trim();
+        lString16 middleName = pauthor.relative( L"/middle-name" ).getText().trim();
         lString16 author = firstName;
         if ( !author.empty() )
             author += L" ";
@@ -5193,7 +5204,7 @@ lString16 extractDocAuthors( ldomDocument * doc, lString16 delimiter, bool short
 
 lString16 extractDocTitle( ldomDocument * doc )
 {
-    return doc->createXPointer(L"/FictionBook/description/title-info/book-title").getText();
+    return doc->createXPointer(L"/FictionBook/description/title-info/book-title").getText().trim();
 }
 
 lString16 extractDocSeries( ldomDocument * doc, int * pSeriesNumber )
@@ -5201,8 +5212,8 @@ lString16 extractDocSeries( ldomDocument * doc, int * pSeriesNumber )
     lString16 res;
     ldomNode * series = doc->createXPointer(L"/FictionBook/description/title-info/sequence").getNode();
     if ( series ) {
-        lString16 sname = series->getAttributeValue( attr_name );
-        lString16 snumber = series->getAttributeValue( attr_number );
+        lString16 sname = lString16(series->getAttributeValue(attr_name)).trim();
+        lString16 snumber = series->getAttributeValue(attr_number);
         if ( !sname.empty() ) {
             if ( pSeriesNumber ) {
                 *pSeriesNumber = snumber.atoi();
@@ -7235,6 +7246,8 @@ ldomNode * ldomDocumentFragmentWriter::OnTagOpen( const lChar16 * nsname, const 
     } else {
         if ( !lStr_cmp(tagname, L"link") )
             styleDetectionState = 1;
+        if ( !lStr_cmp(tagname, L"style") )
+            headStyleState = 1;
     }
     if ( !insideTag && baseTag==tagname ) {
         insideTag = true;
@@ -7257,7 +7270,7 @@ ldomNode * ldomDocumentFragmentWriter::OnTagOpen( const lChar16 * nsname, const 
 /// called on closing tag
 void ldomDocumentFragmentWriter::OnTagClose( const lChar16 * nsname, const lChar16 * tagname )
 {
-    styleDetectionState = 0;
+    styleDetectionState = headStyleState = 0;
     if ( insideTag && baseTag==tagname ) {
         insideTag = false;
         if ( !baseTagReplacement.empty() ) {
@@ -7307,6 +7320,9 @@ void ldomDocumentWriterFilter::appendStyle( const lChar16 * style )
     if ( _styleAttrId==0 ) {
         _styleAttrId = _document->getAttrNameIndex(L"style");
     }
+    if (!_document->getDocFlag(DOC_FLAG_ENABLE_INTERNAL_STYLES))
+        return; // disabled
+
     lString16 oldStyle = node->getAttributeValue(_styleAttrId);
     if ( !oldStyle.empty() && oldStyle.at(oldStyle.length()-1)!=';' )
         oldStyle << L"; ";
@@ -7696,8 +7712,9 @@ void tinyNodeCollection::setDocFlags( lUInt32 value )
 
 int tinyNodeCollection::getPersistenceFlags()
 {
-    int format = getProps()->getIntDef(DOC_PROP_FILE_FORMAT, 0);
+    int format = 2; //getProps()->getIntDef(DOC_PROP_FILE_FORMAT, 0);
     int flag = ( format==2 && getDocFlag(DOC_FLAG_PREFORMATTED_TEXT) ) ? 1 : 0;
+    CRLog::trace("getPersistenceFlags() returned %d", flag);
     return flag;
 }
 
@@ -7707,6 +7724,8 @@ void ldomDocument::clear()
     clearRendBlockCache();
     _rendered = false;
     _urlImageMap.clear();
+    _fontList.clear();
+    fontMan->UnregisterDocumentFonts(_docIndex);
 #endif
     //TODO: implement clear
     //_elemStorage.
@@ -7789,6 +7808,19 @@ bool ldomDocument::loadCacheFileContent(CacheLoadingCallback * formatCallback)
         CRLog::info("%d pages read from cache file", pages.length());
         //_pagesData.setPos( 0 );
 
+        {
+            SerialBuf buf(0, true);
+            if ( !_cacheFile->read(CBT_FONT_DATA, buf)) {
+                CRLog::error("Error while reading font data");
+                return false;
+            }
+            if (!_fontList.deserialize(buf)) {
+                CRLog::error("Error while parsing font data");
+                return CR_ERROR;
+            }
+            registerEmbeddedFonts();
+        }
+
         DocFileHeader h;
         memset(&h, 0, sizeof(h));
         SerialBuf hdrbuf(0,true);
@@ -7802,7 +7834,6 @@ bool ldomDocument::loadCacheFileContent(CacheLoadingCallback * formatCallback)
         _hdr = h;
         CRLog::info("Loaded render properties: styleHash=%x, stylesheetHash=%x, docflags=%x, width=%x, height=%x",
                 _hdr.render_style_hash, _hdr.stylesheet_hash, _hdr.render_docflags, _hdr.render_dx, _hdr.render_dy);
-
     }
 
     CRLog::trace("ldomDocument::loadCacheFileContent() - node data");
@@ -8057,6 +8088,18 @@ ContinuousOperationResult ldomDocument::saveChanges( CRTimerUtil & maxTime )
         // fall through
     case 11:
         _mapSavingStage = 11;
+        CRLog::trace("ldomDocument::saveChanges() - embedded fonts");
+        {
+            SerialBuf buf(4096);
+            _fontList.serialize(buf);
+            if (!_cacheFile->write(CBT_FONT_DATA, buf, COMPRESS_MISC_DATA) ) {
+                CRLog::error("Error while saving embedded font data");
+                return CR_ERROR;
+            }
+        }
+        // fall through
+    case 12:
+        _mapSavingStage = 12;
     }
     CRLog::trace("ldomDocument::saveChanges() - done");
     return CR_DONE;
@@ -8149,7 +8192,7 @@ lUInt32 tinyNodeCollection::calcStyleHash()
     lUInt32 res = 0; //_elemCount;
     lUInt32 globalHash = calcGlobalSettingsHash();
     lUInt32 docFlags = getDocFlags();
-//    CRLog::info("Calculating style hash...  elemCount=%d, globalHash=%08x, docFlags=%08x", _elemCount, globalHash, docFlags);
+    //CRLog::info("Calculating style hash...  elemCount=%d, globalHash=%08x, docFlags=%08x", _elemCount, globalHash, docFlags);
     for ( int i=0; i<count; i++ ) {
         int offs = i*TNC_PART_LEN;
         int sz = TNC_PART_LEN;
@@ -8173,6 +8216,7 @@ lUInt32 tinyNodeCollection::calcStyleHash()
             }
         }
     }
+    CRLog::info("Calculating style hash...  elemCount=%d, globalHash=%08x, docFlags=%08x, nodeStyleHash=%08x", _elemCount, globalHash, docFlags, res);
     res = res * 31 + _imgScalingOptions.getHash();
     res = res * 31 + _minSpaceCondensingPercent;
     res = (res * 31 + globalHash) * 31 + docFlags;
@@ -8254,7 +8298,7 @@ bool tinyNodeCollection::updateLoadedStyles( bool enabled )
                     if ( !s.isNull() ) {
                         lUInt16 fntIndex = _fontMap.get( style );
                         if ( fntIndex==0 ) {
-                            LVFontRef fnt = getFont( s.get() );
+                            LVFontRef fnt = getFont(s.get(), getFontContextDocIndex());
                             fntIndex = _fonts.cache( fnt );
                             if ( fnt.isNull() ) {
                                 CRLog::error("font not found for style!");
@@ -8577,6 +8621,7 @@ public:
     LVStreamRef openExisting( lString16 filename, lUInt32 crc, lUInt32 docFlags )
     {
         lString16 fn = makeFileName( filename, crc, docFlags );
+        CRLog::debug("ldomDocCache::openExisting(%s)", LCSTR(fn));
         LVStreamRef res;
         if ( findFileIndex( fn ) < 0 ) {
             CRLog::error( "ldomDocCache::openExisting - File %s is not found in cache index", UnicodeToUtf8(fn).c_str() );
@@ -10017,7 +10062,7 @@ bool ldomNode::initNodeFont()
             CRLog::error("style not found for index %d", style);
             s = getDocument()->_styles.get( style );
         }
-        LVFontRef fnt = ::getFont( s.get() );
+        LVFontRef fnt = ::getFont(s.get(), getDocument()->getFontContextDocIndex());
         fntIndex = getDocument()->_fonts.cache( fnt );
         if ( fnt.isNull() ) {
             CRLog::error("font not found for style!");
@@ -10595,6 +10640,15 @@ LVImageSourceRef ldomNode::getObjectImageSource()
     return ref;
 }
 
+/// register embedded document fonts in font manager, if any exist in document
+void ldomDocument::registerEmbeddedFonts()
+{
+    for (int i=0; i<_fontList.length(); i++) {
+        LVEmbeddedFontDef * item =  _fontList.get(i);
+        fontMan->RegisterDocumentFont(getDocIndex(), _container, item->getUrl(), item->getFace(), item->getBold(), item->getItalic());
+    }
+}
+
 /// returns object image stream
 LVStreamRef ldomDocument::getObjectImageStream( lString16 refName )
 {
@@ -10923,7 +10977,7 @@ bool LVTocItem::deserialize( ldomDocument * doc, SerialBuf & buf )
 
 
 
-#if defined(_DEBUG) 
+#if 0 && defined(_DEBUG)
 
 #define TEST_FILE_NAME "/tmp/test-cache-file.dat"
 

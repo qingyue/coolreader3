@@ -129,7 +129,7 @@ void ReadEpubToc( ldomDocument * doc, ldomNode * mapRoot, LVTocItem * baseToc, l
     }
 }
 
-lString16 EpubGetRootFilePath( LVContainerRef m_arc )
+lString16 EpubGetRootFilePath(LVContainerRef m_arc)
 {
     // check root media type
     lString16 rootfilePath;
@@ -155,16 +155,496 @@ lString16 EpubGetRootFilePath( LVContainerRef m_arc )
     return rootfilePath;
 }
 
+/// encrypted font demangling proxy: XORs first 1024 bytes of source stream with key
+class FontDemanglingStream : public StreamProxy {
+    LVArray<lUInt8> & _key;
+public:
+    FontDemanglingStream(LVStreamRef baseStream, LVArray<lUInt8> & key) : StreamProxy(baseStream), _key(key) {
+    }
+
+    virtual lverror_t Read( void * buf, lvsize_t count, lvsize_t * nBytesRead ) {
+        lvpos_t pos = _base->GetPos();
+        lverror_t res = _base->Read(buf, count, nBytesRead);
+        if (pos < 1024 && _key.length() == 16) {
+            for (int i=0; i + pos < 1024; i++) {
+                int keyPos = (i + pos) & 15;
+                ((lUInt8*)buf)[i] ^= _key[keyPos];
+            }
+        }
+        return res;
+    }
+
+};
+
+class EncryptedItem {
+public:
+    lString16 _uri;
+    lString16 _method;
+    EncryptedItem(lString16 uri, lString16 method) : _uri(uri), _method(method) {
+
+    }
+};
+
+class EncryptedItemCallback {
+public:
+    virtual void addEncryptedItem(EncryptedItem * item) = 0;
+};
+
+
+class EncCallback : public LVXMLParserCallback {
+    bool insideEncryption;
+    bool insideEncryptedData;
+    bool insideEncryptionMethod;
+    bool insideCipherData;
+    bool insideCipherReference;
+public:
+    /// called on opening tag <
+    virtual ldomNode * OnTagOpen( const lChar16 * nsname, const lChar16 * tagname) {
+        if (!lStr_cmp(tagname, L"encryption"))
+            insideEncryption = true;
+        else if (!lStr_cmp(tagname, L"EncryptedData"))
+            insideEncryptedData = true;
+        else if (!lStr_cmp(tagname, L"EncryptionMethod"))
+            insideEncryptionMethod = true;
+        else if (!lStr_cmp(tagname, L"CipherData"))
+            insideCipherData = true;
+        else if (!lStr_cmp(tagname, L"CipherReference"))
+            insideCipherReference = true;
+		return NULL;
+    }
+    /// called on tag close
+    virtual void OnTagClose( const lChar16 * nsname, const lChar16 * tagname ) {
+        if (!lStr_cmp(tagname, L"encryption"))
+            insideEncryption = false;
+        else if (!lStr_cmp(tagname, L"EncryptedData") && insideEncryptedData) {
+            if (!algorithm.empty() && !uri.empty()) {
+                _container->addEncryptedItem(new EncryptedItem(uri, algorithm));
+            }
+            insideEncryptedData = false;
+        } else if (!lStr_cmp(tagname, L"EncryptionMethod"))
+            insideEncryptionMethod = false;
+        else if (!lStr_cmp(tagname, L"CipherData"))
+            insideCipherData = false;
+        else if (!lStr_cmp(tagname, L"CipherReference"))
+            insideCipherReference = false;
+    }
+    /// called on element attribute
+    virtual void OnAttribute( const lChar16 * nsname, const lChar16 * attrname, const lChar16 * attrvalue ) {
+        if (!lStr_cmp(attrname, L"URI") && insideCipherReference)
+            insideEncryption = false;
+        else if (!lStr_cmp(attrname, L"Algorithm") && insideEncryptionMethod)
+            insideEncryptedData = false;
+    }
+    /// called on text
+    virtual void OnText( const lChar16 * text, int len, lUInt32 flags ) {
+
+    }
+    /// add named BLOB data to document
+    virtual bool OnBlob(lString16 name, const lUInt8 * data, int size) { return false; }
+
+    virtual void OnStop() { }
+    /// called after > of opening tag (when entering tag body)
+    virtual void OnTagBody() { }
+
+    EncryptedItemCallback * _container;
+    lString16 algorithm;
+    lString16 uri;
+    /// destructor
+    EncCallback(EncryptedItemCallback * container) : _container(container) {
+        insideEncryption = false;
+        insideEncryptedData = false;
+        insideEncryptionMethod = false;
+        insideCipherData = false;
+        insideCipherReference = false;
+    }
+    virtual ~EncCallback() {}
+};
+
+class EncryptedDataContainer : public LVContainer, public EncryptedItemCallback {
+    LVContainerRef _container;
+    LVPtrVector<EncryptedItem> _list;
+public:
+    EncryptedDataContainer(LVContainerRef baseContainer) : _container(baseContainer) {
+
+    }
+
+    virtual LVContainer * GetParentContainer() { return _container->GetParentContainer(); }
+    //virtual const LVContainerItemInfo * GetObjectInfo(const wchar_t * pname);
+    virtual const LVContainerItemInfo * GetObjectInfo(int index) { return _container->GetObjectInfo(index); }
+    virtual int GetObjectCount() const { return _container->GetObjectCount(); }
+    /// returns object size (file size or directory entry count)
+    virtual lverror_t GetSize( lvsize_t * pSize ) { return _container->GetSize(pSize); }
+
+
+    virtual LVStreamRef OpenStream( const lChar16 * fname, lvopen_mode_t mode ) {
+
+        LVStreamRef res = _container->OpenStream(fname, mode);
+        if (res.isNull())
+            return res;
+        if (isEncryptedItem(fname))
+            return LVStreamRef(new FontDemanglingStream(res, _fontManglingKey));
+        return res;
+    }
+
+    /// returns stream/container name, may be NULL if unknown
+    virtual const lChar16 * GetName()
+    {
+        return _container->GetName();
+    }
+    /// sets stream/container name, may be not implemented for some objects
+    virtual void SetName(const lChar16 * name)
+    {
+        _container->SetName(name);
+    }
+
+
+    virtual void addEncryptedItem(EncryptedItem * item) {
+        _list.add(item);
+    }
+
+    EncryptedItem * findEncryptedItem(const lChar16 * name) {
+        lString16 n;
+        if (name[0] != '/' && name[0] != '\\')
+            n << L"/";
+        n << name;
+        for (int i=0; i<_list.length(); i++) {
+            lString16 s = _list[i]->_uri;
+            if (s[0]!='/' && s[i]!='\\')
+                s = lString16(L"/") + s;
+            if (_list[i]->_uri == s)
+                return _list[i];
+        }
+        return NULL;
+    }
+
+    bool isEncryptedItem(const lChar16 * name) {
+        return findEncryptedItem(name) != NULL;
+    }
+
+    LVArray<lUInt8> _fontManglingKey;
+
+    bool setManglingKey(lString16 key) {
+        if (key.startsWith(lString16(L"urn:uuid:")))
+            key = key.substr(9);
+        _fontManglingKey.clear();
+        _fontManglingKey.reserve(16);
+        lUInt8 b = 0;
+        int n = 0;
+        for (int i=0; i<key.length(); i++) {
+            int d = hexDigit(key[i]);
+            if (d>=0) {
+                b = (b << 4) | d;
+                if (++n > 1) {
+                    _fontManglingKey.add(b);
+                    n = 0;
+                    b = 0;
+                }
+            }
+        }
+        return _fontManglingKey.length() == 16;
+    }
+
+    bool hasUnsupportedEncryption() {
+        for (int i=0; i<_list.length(); i++) {
+            lString16 method = _list[i]->_method;
+            if (method != L"http://ns.adobe.com/pdf/enc#RC") {
+                CRLog::debug("unsupported encryption method: %s", LCSTR(method));
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool open() {
+        LVStreamRef stream = _container->OpenStream(L"META-INF/encryption.xml", LVOM_READ);
+        if (stream.isNull())
+            return false;
+        EncCallback enccallback(this);
+        LVXMLParser parser(stream, &enccallback, false, false);
+        if (!parser.Parse())
+            return false;
+        if (_list.length())
+            return true;
+        return false;
+    }
+};
+
+void createEncryptedEpubWarningDocument(ldomDocument * m_doc) {
+    CRLog::error("EPUB document contains encrypted items");
+    ldomDocumentWriter writer(m_doc);
+    writer.OnTagOpenNoAttr(NULL, L"body");
+    writer.OnTagOpenNoAttr(NULL, L"h3");
+    lString16 hdr(L"Encrypted content");
+    writer.OnText(hdr.c_str(), hdr.length(), 0);
+    writer.OnTagClose(NULL, L"h3");
+
+    writer.OnTagOpenAndClose(NULL, L"hr");
+
+    writer.OnTagOpenNoAttr(NULL, L"p");
+    lString16 txt(L"This document is encrypted (has DRM protection).");
+    writer.OnText(txt.c_str(), txt.length(), 0);
+    writer.OnTagClose(NULL, L"p");
+
+    writer.OnTagOpenNoAttr(NULL, L"p");
+    lString16 txt2(L"Cool Reader doesn't support reading of DRM protected books.");
+    writer.OnText(txt2.c_str(), txt2.length(), 0);
+    writer.OnTagClose(NULL, L"p");
+
+    writer.OnTagOpenNoAttr(NULL, L"p");
+    lString16 txt3(L"To read this book, please use software recommended by book seller.");
+    writer.OnText(txt3.c_str(), txt3.length(), 0);
+    writer.OnTagClose(NULL, L"p");
+
+    writer.OnTagOpenAndClose(NULL, L"hr");
+
+    writer.OnTagOpenNoAttr(NULL, L"p");
+    lString16 txt4(L"");
+    writer.OnText(txt4.c_str(), txt4.length(), 0);
+    writer.OnTagClose(NULL, L"p");
+
+    writer.OnTagClose(NULL, L"body");
+}
+
+LVStreamRef GetEpubCoverpage(LVContainerRef arc)
+{
+    // check root media type
+    lString16 rootfilePath = EpubGetRootFilePath(arc);
+    if ( rootfilePath.empty() )
+        return LVStreamRef();
+
+    EncryptedDataContainer * decryptor = new EncryptedDataContainer(arc);
+    if (decryptor->open()) {
+        CRLog::debug("EPUB: encrypted items detected");
+    }
+
+    LVContainerRef m_arc = LVContainerRef(decryptor);
+
+    lString16 codeBase = LVExtractPath(rootfilePath, false);
+    CRLog::trace("codeBase=%s", LCSTR(codeBase));
+
+    LVStreamRef content_stream = m_arc->OpenStream(rootfilePath.c_str(), LVOM_READ);
+    if ( content_stream.isNull() )
+        return LVStreamRef();
+
+
+    LVStreamRef coverPageImageStream;
+    // reading content stream
+    {
+        lString16 coverId;
+        ldomDocument * doc = LVParseXMLStream( content_stream );
+        if ( !doc )
+            return LVStreamRef();
+
+        for ( int i=1; i<20; i++ ) {
+            ldomNode * item = doc->nodeFromXPath( lString16(L"package/metadata/meta[") + lString16::itoa(i) + L"]" );
+            if ( !item )
+                break;
+            lString16 name = item->getAttributeValue(L"name");
+            lString16 content = item->getAttributeValue(L"content");
+            if (name == L"cover")
+                coverId = content;
+        }
+
+        // items
+        for ( int i=1; i<50000; i++ ) {
+            ldomNode * item = doc->nodeFromXPath( lString16(L"package/manifest/item[") + lString16::itoa(i) + L"]" );
+            if ( !item )
+                break;
+            lString16 href = item->getAttributeValue(L"href");
+            lString16 id = item->getAttributeValue(L"id");
+            if ( !href.empty() && !id.empty() ) {
+                if (id == coverId) {
+                    // coverpage file
+                    lString16 coverFileName = codeBase + href;
+                    CRLog::info("EPUB coverpage file: %s", LCSTR(coverFileName));
+                    coverPageImageStream = m_arc->OpenStream(coverFileName.c_str(), LVOM_READ);
+                }
+            }
+        }
+        delete doc;
+    }
+
+    return coverPageImageStream;
+}
+
+class EmbeddedFontStyleParser {
+    LVEmbeddedFontList & _fontList;
+    lString16 _basePath;
+    int _state;
+    lString8 _face;
+    bool _italic;
+    bool _bold;
+    lString16 _url;
+public:
+    EmbeddedFontStyleParser(LVEmbeddedFontList & fontList) : _fontList(fontList) { }
+    void onToken(char token) {
+        // 4,5:  font-family:
+        // 6,7:  font-weight:
+        // 8,9:  font-style:
+        //10,11: src:
+        //   10   11    12   13
+        //   src   :   url    (
+        //CRLog::trace("state==%d: %c ", _state, token);
+        switch (token) {
+        case ':':
+            if (_state < 2) {
+                _state = 0;
+            } else if (_state == 4 || _state == 6 || _state == 8 || _state == 10) {
+                _state++;
+            } else {
+                _state = 2;
+            }
+            break;
+        case ';':
+            if (_state < 2) {
+                _state = 0;
+            } else {
+                _state = 2;
+            }
+            break;
+        case '{':
+            if (_state == 1) {
+                _state = 2; // inside @font {
+                _face.clear();
+                _italic = false;
+                _bold = false;
+                _url.clear();
+            } else
+                _state = 3; // inside other {
+            break;
+        case '}':
+            if (_state == 2) {
+                if (!_url.empty()) {
+//                    CRLog::trace("@font { face: %s; bold: %s; italic: %s; url: %s", _face.c_str(), _bold ? "yes" : "no",
+//                                 _italic ? "yes" : "no", LCSTR(_url));
+                    _fontList.add(_url, _face, _bold, _italic);
+                }
+            }
+            _state = 0;
+            break;
+        case '(':
+            if (_state == 12) {
+                _state = 13;
+            } else {
+                if (_state > 2)
+                    _state = 2;
+            }
+            break;
+        }
+    }
+    void onToken(lString8 & token) {
+        if (token.empty())
+            return;
+        lString8 t = token;
+        token.clear();
+        //CRLog::trace("state==%d: %s", _state, t.c_str());
+        if (t == "@font-face") {
+            if (_state == 0)
+                _state = 1; // right after @font
+            return;
+        }
+        if (_state == 1)
+            _state = 0;
+        if (_state == 2) {
+            if (t == "font-family")
+                _state = 4;
+            else if (t == "font-weight")
+                _state = 6;
+            else if (t == "font-style")
+                _state = 8;
+            else if (t == "src")
+                _state = 10;
+        } else if (_state == 5) {
+            _face = t;
+            _state = 2;
+        } else if (_state == 7) {
+            if (t == "bold")
+                _bold = true;
+            _state = 2;
+        } else if (_state == 9) {
+            if (t == "italic")
+                _italic = true;
+            _state = 2;
+        } else if (_state == 11) {
+            if (t == "url")
+                _state = 12;
+            else
+                _state = 2;
+        }
+    }
+    void onQuotedText(lString8 & token) {
+        //CRLog::trace("state==%d: \"%s\"", _state, token.c_str());
+        if (_state == 11 || _state == 13) {
+            if (!token.empty()) {
+                _url = LVCombinePaths(_basePath, Utf8ToUnicode(token));
+            }
+            _state = 2;
+        } else if (_state == 5) {
+            if (!token.empty()) {
+                _face = token;
+            }
+            _state = 2;
+        }
+        token.clear();
+    }
+
+    void parse(lString16 basePath, const lString8 & css) {
+        _state = 0;
+        _basePath = basePath;
+        lString8 token;
+        char insideQuotes = 0;
+        for (int i=0; i<css.length(); i++) {
+            char ch = css[i];
+            if (insideQuotes || _state == 13) {
+                if (ch == insideQuotes || (_state == 13 && ch == ')')) {
+                    onQuotedText(token);
+                    insideQuotes =  0;
+                    if (_state == 13)
+                        onToken(ch);
+                } else {
+                    if (ch != ' ' || _state != 13)
+                        token << ch;
+                }
+                continue;
+            }
+            if (ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n') {
+                onToken(token);
+            } else if (ch == '@' || ch=='-' || ch>='a' && ch <='z' || ch>='A' && ch <='Z') {
+                token << ch;
+            } else if (ch == ':' || ch=='{' || ch == '}' || ch=='(' || ch == ')' || ch == ';') {
+                onToken(token);
+                onToken(ch);
+            } else if (ch == '\'' || ch == '\"') {
+                onToken(token);
+                insideQuotes = ch;
+            }
+        }
+    }
+};
+
 bool ImportEpubDocument( LVStreamRef stream, ldomDocument * m_doc, LVDocViewCallback * progressCallback, CacheLoadingCallback * formatCallback )
 {
-    LVContainerRef m_arc = LVOpenArchieve( stream );
-    if ( m_arc.isNull() )
+    LVContainerRef arc = LVOpenArchieve( stream );
+    if ( arc.isNull() )
         return false; // not a ZIP archive
 
     // check root media type
-    lString16 rootfilePath = EpubGetRootFilePath(m_arc);
+    lString16 rootfilePath = EpubGetRootFilePath(arc);
     if ( rootfilePath.empty() )
     	return false;
+
+    EncryptedDataContainer * decryptor = new EncryptedDataContainer(arc);
+    if (decryptor->open()) {
+        CRLog::debug("EPUB: encrypted items detected");
+    }
+
+    LVContainerRef m_arc = LVContainerRef(decryptor);
+
+    if (decryptor->hasUnsupportedEncryption()) {
+        // DRM!!!
+        createEncryptedEpubWarningDocument(m_doc);
+        return true;
+    }
 
     m_doc->setContainer(m_arc);
 
@@ -189,6 +669,9 @@ bool ImportEpubDocument( LVStreamRef stream, ldomDocument * m_doc, LVDocViewCall
     lString16 ncxHref;
     lString16 coverId;
 
+    LVEmbeddedFontList fontList;
+    EmbeddedFontStyleParser styleParser(fontList);
+
     // reading content stream
     {
         ldomDocument * doc = LVParseXMLStream( content_stream );
@@ -200,6 +683,18 @@ bool ImportEpubDocument( LVStreamRef stream, ldomDocument * m_doc, LVDocViewCall
         lString16 title = doc->textFromXPath( lString16(L"package/metadata/title"));
         m_doc_props->setString(DOC_PROP_TITLE, title);
         m_doc_props->setString(DOC_PROP_AUTHORS, author );
+
+        for ( int i=1; i<50; i++ ) {
+            ldomNode * item = doc->nodeFromXPath( lString16(L"package/metadata/identifier[") + lString16::itoa(i) + L"]" );
+            if (!item)
+                break;
+            lString16 key = item->getText();
+            if (decryptor->setManglingKey(key)) {
+                CRLog::debug("Using font mangling key %s", LCSTR(key));
+                break;
+            }
+        }
+
         CRLog::info("Author: %s Title: %s", LCSTR(author), LCSTR(title));
         for ( int i=1; i<20; i++ ) {
             ldomNode * item = doc->nodeFromXPath( lString16(L"package/metadata/meta[") + lString16::itoa(i) + L"]" );
@@ -242,15 +737,26 @@ bool ImportEpubDocument( LVStreamRef stream, ldomDocument * m_doc, LVDocViewCall
                 epubItem->id = id;
                 epubItem->mediaType = mediaType;
                 epubItems.add( epubItem );
-            }
-//            if ( mediaType==L"text/css" ) {
-//                lString16 name = codeBase + href;
-//                LVStreamRef cssStream = m_arc->OpenStream(name.c_str(), LVOM_READ);
-//                if ( !cssStream.isNull() ) {
-//                    css << L"\n";
-//                    css << LVReadTextFile( cssStream );
+
+//                // register embedded document fonts
+//                if (mediaType == L"application/vnd.ms-opentype"
+//                        || mediaType == L"application/x-font-otf"
+//                        || mediaType == L"application/x-font-ttf") { // TODO: more media types?
+//                    // TODO:
+//                    fontList.add(codeBase + href);
 //                }
-//            }
+            }
+            if ( mediaType==L"text/css" ) {
+                lString16 name = LVCombinePaths(codeBase, href);
+                LVStreamRef cssStream = m_arc->OpenStream(name.c_str(), LVOM_READ);
+                if (!cssStream.isNull()) {
+                    lString8 cssFile = UnicodeToUtf8(LVReadTextFile(cssStream));
+                    lString16 base = name;
+                    LVExtractLastPathElement(base);
+                    //CRLog::trace("style: %s", cssFile.c_str());
+                    styleParser.parse(base, cssFile);
+                }
+            }
         }
 
         // spine == itemrefs
@@ -291,7 +797,7 @@ bool ImportEpubDocument( LVStreamRef stream, ldomDocument * m_doc, LVDocViewCall
     }
 #endif
 
-    lUInt32 saveFlags = m_doc ? m_doc->getDocFlags() : DOC_FLAG_DEFAULTS;
+    lUInt32 saveFlags = m_doc->getDocFlags();
     m_doc->setDocFlags( saveFlags );
     m_doc->setContainer( m_arc );
 
@@ -321,17 +827,31 @@ bool ImportEpubDocument( LVStreamRef stream, ldomDocument * m_doc, LVDocViewCall
                 LVStreamRef stream = m_arc->OpenStream(name.c_str(), LVOM_READ);
                 if ( !stream.isNull() ) {
                     appender.setCodeBase( name );
+                    lString16 base = name;
+                    LVExtractLastPathElement(base);
+                    //CRLog::trace("base: %s", LCSTR(base));
                     //LVXMLParser
                     LVHTMLParser parser(stream, &appender);
                     if ( parser.CheckFormat() && parser.Parse() ) {
                         // valid
                         fragmentCount++;
+                        lString8 headCss = appender.getHeadStyleText();
+                        //CRLog::trace("style: %s", headCss.c_str());
+                        styleParser.parse(base, headCss);
                     } else {
                         CRLog::error("Document type is not XML/XHTML for fragment %s", LCSTR(name));
                     }
                 }
             }
         }
+    }
+
+    // TODO: fill font properties from CSS @font
+
+    if (!fontList.empty()) {
+        // set document font list, and register fonts
+        m_doc->getEmbeddedFontList().set(fontList);
+        m_doc->registerEmbeddedFonts();
     }
 
     ldomDocument * ncxdoc = NULL;

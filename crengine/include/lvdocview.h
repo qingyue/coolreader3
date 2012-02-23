@@ -24,6 +24,7 @@
 // standard properties supported by LVDocView
 #define PROP_FONT_GAMMA              "font.gamma" // currently supported: 0.65 .. 1.35, see gammatbl.h
 #define PROP_FONT_ANTIALIASING       "font.antialiasing.mode"
+#define PROP_FONT_HINTING            "font.hinting.mode"
 #define PROP_FONT_COLOR              "font.color.default"
 #define PROP_FONT_FACE               "font.face.default"
 #define PROP_FONT_WEIGHT_EMBOLDEN    "font.face.weight.embolden"
@@ -48,6 +49,7 @@
 #define PROP_ROTATE_ANGLE            "window.rotate.angle"
 #endif
 #define PROP_EMBEDDED_STYLES         "crengine.doc.embedded.styles.enabled"
+#define PROP_EMBEDDED_FONTS          "crengine.doc.embedded.fonts.enabled"
 #define PROP_DISPLAY_INVERSE         "crengine.display.inverse"
 #define PROP_DISPLAY_FULL_UPDATE_INTERVAL "crengine.display.full.update.interval"
 #define PROP_DISPLAY_TURBO_UPDATE_MODE "crengine.display.turbo.update"
@@ -296,6 +298,12 @@ enum LVDocCmd
     DCMD_SELECT_PREV_SENTENCE, // nove selection to next sentence
     DCMD_SELECT_MOVE_LEFT_BOUND_BY_WORDS, // move selection start by words
     DCMD_SELECT_MOVE_RIGHT_BOUND_BY_WORDS, // move selection end by words
+
+    // 136
+    DCMD_SET_TEXT_FORMAT, // set text format, param=1 to autoformat, 0 for preformatted
+    // 137
+    DCMD_SET_DOC_FONTS, // set embedded fonts option (1=enabled, 0=disabled)
+
 
     //=======================================
     DCMD_EDIT_CURSOR_LEFT,
@@ -930,7 +938,7 @@ public:
     /// get number of current page
     int getCurPage();
     /// move to specified page
-    bool goToPage( int page );
+    bool goToPage(int page, bool updatePosBookmark = true);
     /// returns page count
     int getPageCount();
 

@@ -9,15 +9,17 @@ import java.lang.reflect.Field;
 import org.coolreader.crengine.AboutDialog;
 import org.coolreader.crengine.BackgroundThread;
 import org.coolreader.crengine.BaseDialog;
+import org.coolreader.crengine.BookInfo;
 import org.coolreader.crengine.BookmarksDlg;
 import org.coolreader.crengine.CRDB;
 import org.coolreader.crengine.DeviceInfo;
+import org.coolreader.crengine.EinkScreen;
 import org.coolreader.crengine.Engine;
 import org.coolreader.crengine.Engine.HyphDict;
-import org.coolreader.crengine.BookInfo;
 import org.coolreader.crengine.FileBrowser;
 import org.coolreader.crengine.FileInfo;
 import org.coolreader.crengine.History;
+import org.coolreader.crengine.InterfaceTheme;
 import org.coolreader.crengine.L;
 import org.coolreader.crengine.Logger;
 import org.coolreader.crengine.OptionsDialog;
@@ -25,17 +27,30 @@ import org.coolreader.crengine.Properties;
 import org.coolreader.crengine.ReaderAction;
 import org.coolreader.crengine.ReaderView;
 import org.coolreader.crengine.Scanner;
+import org.coolreader.crengine.Settings;
 import org.coolreader.crengine.TTS;
-import org.coolreader.crengine.Utils;
 import org.coolreader.crengine.TTS.OnTTSCreatedListener;
-import org.coolreader.crengine.EinkScreen;
+import org.coolreader.crengine.ToastView;
+import org.coolreader.crengine.Utils;
+import org.coolreader.donations.BillingService;
+import org.coolreader.donations.BillingService.RequestPurchase;
+import org.coolreader.donations.BillingService.RestoreTransactions;
+import org.coolreader.donations.Consts;
+import org.coolreader.donations.Consts.PurchaseState;
+import org.coolreader.donations.Consts.ResponseCode;
+import org.coolreader.donations.PurchaseObserver;
+import org.coolreader.donations.ResponseHandler;
+import org.koekak.android.ebookdownloader.SonyBookSelector;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.SearchManager;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
@@ -43,23 +58,27 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Configuration;
-import android.graphics.Color;
+import android.content.res.TypedArray;
 import android.graphics.PixelFormat;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Debug;
+import android.os.Handler;
 import android.os.PowerManager;
 import android.text.ClipboardManager;
 import android.text.method.DigitsKeyListener;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.Display;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.WindowManager.LayoutParams;
@@ -83,7 +102,7 @@ public class CoolReader extends Activity
 	
 	
 	public CoolReader() {
-	    brightnessHackError = DeviceInfo.SAMSUNG_BUTTONS_HIGHLIGHT_PATCH;
+	    brightnessHackError = false; //DeviceInfo.SAMSUNG_BUTTONS_HIGHLIGHT_PATCH;
 	}
 	
 	public Scanner getScanner()
@@ -162,6 +181,39 @@ public class CoolReader extends Activity
 	public void setNightMode( boolean nightMode ) {
 		mNightMode = nightMode;
 	}
+	
+	private InterfaceTheme currentTheme = DeviceInfo.FORCE_LIGHT_THEME ? InterfaceTheme.WHITE : InterfaceTheme.LIGHT;
+	
+	public InterfaceTheme getCurrentTheme() {
+		return currentTheme;
+	}
+
+	public void setCurrentTheme(String themeCode) {
+		InterfaceTheme theme = InterfaceTheme.findByCode(themeCode);
+		if (theme != null) {
+			setCurrentTheme(theme);
+		}
+	}
+
+	public void setCurrentTheme(InterfaceTheme theme) {
+		currentTheme = theme;
+		getApplication().setTheme(theme.getThemeId());
+		setTheme(theme.getThemeId());
+		if (mFrame != null) {
+			TypedArray a = getTheme().obtainStyledAttributes(new int[] {android.R.attr.windowBackground, android.R.attr.background, android.R.attr.textColor, android.R.attr.colorBackground, android.R.attr.colorForeground});
+			int bgRes = a.getResourceId(0, 0);
+			//int clText = a.getColor(1, 0);
+			int clBackground = a.getColor(2, 0);
+			//int clForeground = a.getColor(3, 0);
+			a.recycle();
+			if (clBackground != 0)
+				mFrame.setBackgroundColor(clBackground);
+			if (bgRes != 0)
+				mFrame.setBackgroundResource(bgRes);
+		}
+		if (mBrowser != null)
+			mBrowser.onThemeChanged();
+	}
 
 	private boolean mFullscreen = false;
 	public boolean isFullscreen() {
@@ -187,40 +239,21 @@ public class CoolReader extends Activity
 		}
 	}
 	
-	private int sdkInt = 0;
-	public int getSDKLevel() {
-		if (sdkInt > 0)
-			return sdkInt;
-		// hack for Android 1.5
-		sdkInt = 3;
-		Field fld;
-		try {
-			Class<?> cl = android.os.Build.VERSION.class;
-			fld = cl.getField("SDK_INT");
-			sdkInt = fld.getInt(cl);
-			log.i("API LEVEL " + sdkInt + " detected");
-		} catch (SecurityException e) {
-			// ignore
-		} catch (NoSuchFieldException e) {
-			// ignore
-		} catch (IllegalArgumentException e) {
-			// ignore
-		} catch (IllegalAccessException e) {
-			// ignore
-		}
-		return sdkInt;
-	}
 	
-	private boolean mWakeLockEnabled = false;
 	public boolean isWakeLockEnabled() {
-		return mWakeLockEnabled;
+		return screenBacklightDuration > 0;
 	}
 
-	public void setWakeLockEnabled( boolean wakeLockEnabled )
+	/**
+	 * @param backlightDurationMinutes 0 = system default, 1 == 3 minutes, 2..5 == 2..5 minutes
+	 */
+	public void setScreenBacklightDuration(int backlightDurationMinutes)
 	{
-		if ( mWakeLockEnabled != wakeLockEnabled ) {
-			mWakeLockEnabled = wakeLockEnabled;
-			if ( !mWakeLockEnabled )
+		if (backlightDurationMinutes == 1)
+			backlightDurationMinutes = 3;
+		if (screenBacklightDuration != backlightDurationMinutes * 60 * 1000) {
+			screenBacklightDuration = backlightDurationMinutes * 60 * 1000;
+			if (screenBacklightDuration == 0)
 				backlightControl.release();
 			else
 				backlightControl.onUserActivity();
@@ -272,7 +305,7 @@ public class CoolReader extends Activity
 	public void setScreenOrientation( int angle )
 	{
 		int newOrientation = screenOrientation;
-		boolean level9 = getSDKLevel() >= 9;
+		boolean level9 = DeviceInfo.getSDKLevel() >= 9;
 		switch (angle) {
 		case 0:
 			newOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT; // level9 ? ActivityInfo_SCREEN_ORIENTATION_SENSOR_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
@@ -300,6 +333,8 @@ public class CoolReader extends Activity
 
 	private Runnable backlightTimerTask = null;
 	private static long lastUserActivityTime;
+	public static final int DEF_SCREEN_BACKLIGHT_TIMER_INTERVAL = 3 * 60 * 1000;
+	private int screenBacklightDuration = DEF_SCREEN_BACKLIGHT_TIMER_INTERVAL;
 
 	private class ScreenBacklightControl {
 		PowerManager.WakeLock wl = null;
@@ -307,7 +342,6 @@ public class CoolReader extends Activity
 		public ScreenBacklightControl() {
 		}
 
-		public static final int SCREEN_BACKLIGHT_TIMER_INTERVAL = 3 * 60 * 1000;
 
 		public void onUserActivity() {
 			lastUserActivityTime = Utils.timeStamp();
@@ -330,11 +364,12 @@ public class CoolReader extends Activity
 				wl.acquire();
 			}
 
-			if (backlightTimerTask == null)
+			if (backlightTimerTask == null) {
 				log.v("ScreenBacklightControl: timer task started");
-			backlightTimerTask = new BacklightTimerTask();
-			BackgroundThread.instance().postGUI(backlightTimerTask,
-					SCREEN_BACKLIGHT_TIMER_INTERVAL);
+				backlightTimerTask = new BacklightTimerTask();
+				BackgroundThread.instance().postGUI(backlightTimerTask,
+						screenBacklightDuration / 10);
+			}
 		}
 
 		public boolean isHeld() {
@@ -353,14 +388,25 @@ public class CoolReader extends Activity
 
 			@Override
 			public void run() {
-				if (backlightTimerTask != this)
+				if (backlightTimerTask == null)
 					return;
 				long interval = Utils.timeInterval(lastUserActivityTime);
 				log.v("ScreenBacklightControl: timer task, lastActivityMillis = "
 						+ interval);
-				if (interval > SCREEN_BACKLIGHT_TIMER_INTERVAL) {
+				int nextTimerInterval = screenBacklightDuration / 20;
+				boolean dim = false;
+				if (interval > screenBacklightDuration * 8 / 10) {
+					nextTimerInterval = nextTimerInterval / 8;
+					dim = true;
+				}
+				if (interval > screenBacklightDuration) {
 					log.v("ScreenBacklightControl: interval is expired");
 					release();
+				} else {
+					BackgroundThread.instance().postGUI(backlightTimerTask, nextTimerInterval);
+					if (dim) {
+						updateBacklightBrightness(-0.9f); // reduce by 9%
+					}
 				}
 			}
 
@@ -536,17 +582,21 @@ public class CoolReader extends Activity
 		
 		// testing background thread
     	mBackgroundThread = BackgroundThread.instance();
-		mFrame = new FrameLayout(this);
-		log.i("initializing scanner");
+    	
 		mEngine = new Engine(this, mBackgroundThread);
-		mBackgroundThread.setGUI(mFrame);
-		requestWindowFeature(Window.FEATURE_NO_TITLE);
-
+		
 		// load settings
 		Properties props = loadSettings();
-		
+		String theme = props.getProperty(ReaderView.PROP_APP_THEME, DeviceInfo.FORCE_LIGHT_THEME ? "WHITE" : "LIGHT");
+		setCurrentTheme(theme);
+    	
+		mFrame = new FrameLayout(this);
+		mBackgroundThread.setGUI(mFrame);
+
+		requestWindowFeature(Window.FEATURE_NO_TITLE);
+
 		setFullscreen( props.getBool(ReaderView.PROP_APP_FULLSCREEN, (DeviceInfo.EINK_SCREEN?true:false)));
-		int orientation = props.getInt(ReaderView.PROP_APP_SCREEN_ORIENTATION, (DeviceInfo.EINK_SCREEN?0:4));
+		int orientation = props.getInt(ReaderView.PROP_APP_SCREEN_ORIENTATION, 0); //(DeviceInfo.EINK_SCREEN?0:4)
 		if ( orientation < 0 || orientation > 4 )
 			orientation = 0;
 		setScreenOrientation(orientation);
@@ -554,7 +604,7 @@ public class CoolReader extends Activity
 		if ( backlight<-1 || backlight>100 )
 			backlight = -1;
 		setScreenBacklightLevel(backlight);
-		
+
         mEngine.showProgress( 0, R.string.progress_starting_cool_reader );
 
         // wait until all background tasks are executed
@@ -567,7 +617,7 @@ public class CoolReader extends Activity
 //		startupView = new View(this) {
 //		};
 //		startupView.setBackgroundColor(Color.BLACK);
-		setWakeLockEnabled(props.getBool(ReaderView.PROP_APP_SCREEN_BACKLIGHT_LOCK, false));
+		setScreenBacklightDuration(props.getInt(ReaderView.PROP_APP_SCREEN_BACKLIGHT_LOCK, 3));
 
 		// open DB
 		final String SQLITE_DB_NAME = "cr3db.sqlite";
@@ -590,10 +640,10 @@ public class CoolReader extends Activity
 //			setTheme(android.R.style.Theme_Light);
 //			getWindow().setBackgroundDrawableResource(drawable.editbox_background);
 //		}
-		if ( DeviceInfo.FORCE_LIGHT_THEME ) {
-			mFrame.setBackgroundColor( Color.WHITE );
-			setTheme(R.style.Dialog_Fullscreen_Day);
-		}
+//		if ( DeviceInfo.FORCE_LIGHT_THEME ) {
+//			mFrame.setBackgroundColor( Color.WHITE );
+//			setTheme(R.style.Dialog_Fullscreen_Day);
+//		}
 		
 		mReaderView = new ReaderView(this, mEngine, mBackgroundThread, props);
 
@@ -626,11 +676,43 @@ public class CoolReader extends Activity
 		if ( initialBatteryState>=0 )
 			mReaderView.setBatteryState(initialBatteryState);
         
+		//==========================================
+		// Donations related code
+		try {
+	        mHandler = new Handler();
+	        mPurchaseObserver = new CRPurchaseObserver(mHandler);
+	        mBillingService = new BillingService();
+	        mBillingService.setContext(this);
+	
+	        //mPurchaseDatabase = new PurchaseDatabase(this);
+	
+	        // Check if billing is supported.
+	        ResponseHandler.register(mPurchaseObserver);
+	        billingSupported = mBillingService.checkBillingSupported();
+		} catch (VerifyError e) {
+			log.e("Exception while trying to initialize billing service for donations");
+		}
+        if (!billingSupported) {
+        	log.i("Billing is not supported");
+        } else {
+        	log.i("Billing is supported");
+        }
+		
         log.i("CoolReader.onCreate() exiting");
     }
     
     public ClipboardManager getClipboardmanager() {
     	return (ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
+    }
+    
+    private boolean keyBacklightOff = true;
+    public boolean isKeyBacklightDisabled() {
+    	return keyBacklightOff;
+    }
+    
+    public void setKeyBacklightDisabled(boolean disabled) {
+    	keyBacklightOff = disabled;
+    	onUserActivity();
     }
     
     public void setScreenBacklightLevel( int percent )
@@ -646,68 +728,123 @@ public class CoolReader extends Activity
     private int screenBacklightBrightness = -1; // use default
     //private boolean brightnessHackError = false;
     private boolean brightnessHackError = false;
-    	    
+
+    private void turnOffKeyBacklight() {
+    	if (!isStarted())
+    		return;
+    	// repeat again in short interval
+    	if (!mEngine.setKeyBacklight(0)) {
+    		log.w("Cannot control key backlight directly");
+    		return;
+    	}
+    	// repeat again in short interval
+    	Runnable task = new Runnable() {
+			@Override
+			public void run() {
+		    	if (!isStarted())
+		    		return;
+		    	if (!mEngine.setKeyBacklight(0))
+		    		log.w("Cannot control key backlight directly (delayed)");
+			}
+		};
+		BackgroundThread.instance().postGUI(task, 1);
+		BackgroundThread.instance().postGUI(task, 10);
+    }
+    
+    private void updateBacklightBrightness(float b) {
+        Window wnd = getWindow();
+        if (wnd != null) {
+	    	LayoutParams attrs =  wnd.getAttributes();
+	    	boolean changed = false;
+	    	if (b < 0) {
+	    		log.d("dimming screen by " + (int)((1 + b)*100) + "%");
+	    		b = -b * attrs.screenBrightness;
+	    		if (b < 0.15)
+	    			return;
+	    	}
+	    	float delta = attrs.screenBrightness - b;
+	    	if (delta < 0)
+	    		delta = -delta;
+	    	if (delta > 0.01) {
+	    		attrs.screenBrightness = b;
+	    		changed = true;
+	    	}
+	    	if ( changed ) {
+	    		log.d("Window attribute changed: " + attrs);
+	    		wnd.setAttributes(attrs);
+	    	}
+        }
+    }
+
+    private void updateButtonsBrightness(float buttonBrightness) {
+        Window wnd = getWindow();
+        if (wnd != null) {
+	    	LayoutParams attrs =  wnd.getAttributes();
+	    	boolean changed = false;
+	    	// hack to set buttonBrightness field
+	    	//float buttonBrightness = keyBacklightOff ? 0.0f : -1.0f;
+	    	if (!brightnessHackError)
+	    	try {
+	        	Field bb = attrs.getClass().getField("buttonBrightness");
+	        	if ( bb!=null ) {
+	        		Float oldValue = (Float)bb.get(attrs);
+	        		if ( oldValue==null || oldValue.floatValue()!=0 ) {
+	        			bb.set(attrs, buttonBrightness);
+		        		changed = true;
+	        		}
+	        	}
+	    	} catch ( Exception e ) {
+	    		log.e("WindowManager.LayoutParams.buttonBrightness field is not found, cannot turn buttons backlight off");
+	    		brightnessHackError = true;
+	    	}
+	    	//attrs.buttonBrightness = 0;
+	    	if ( changed ) {
+	    		log.d("Window attribute changed: " + attrs);
+	    		wnd.setAttributes(attrs);
+	    	}
+	    	if (keyBacklightOff)
+	    		turnOffKeyBacklight();
+        }
+    }
+
+    private final static int MIN_BACKLIGHT_LEVEL_PERCENT = DeviceInfo.MIN_SCREEN_BRIGHTNESS_PERCENT;
+    
     public void onUserActivity()
     {
-    	if ( backlightControl==null )
-    		return;
-    	backlightControl.onUserActivity();
+    	if (backlightControl != null)
+      	    backlightControl.onUserActivity();
     	// Hack
     	//if ( backlightControl.isHeld() )
     	BackgroundThread.guiExecutor.execute(new Runnable() {
 			@Override
 			public void run() {
 				try {
-			        Window wnd = getWindow();
-			        if ( wnd!=null ) {
-			        	LayoutParams attrs =  wnd.getAttributes();
-			        	boolean changed = false;
-			        	float b;
-			        	int dimmingAlpha = 255;
-			        	if ( screenBacklightBrightness>=0 ) {
-		        			float minb = 1/16f; 
-			        		if ( screenBacklightBrightness >= 10 ) {
-			        			b = (screenBacklightBrightness - 10) / 90.0f;
-			        			b = minb + b * (1-minb);
-				        		//b = (screenBacklightBrightness - 10) * 10.0f / 9.0f / 95.0f + 0.5f;
-					        	if ( b<0.0f ) // BRIGHTNESS_OVERRIDE_OFF
-					        		b = 0.0f;
-					        	else if ( b>1.0f )
-					        		b = 1.0f; //BRIGHTNESS_OVERRIDE_FULL
-			        		} else {
+		        	float b;
+		        	int dimmingAlpha = 255;
+		        	// screenBacklightBrightness is 0..100
+		        	if (screenBacklightBrightness >= 0) {
+	        			float minb = MIN_BACKLIGHT_LEVEL_PERCENT / 100.0f; 
+		        		if ( screenBacklightBrightness >= 10 ) {
+		        			// real brightness control, no colors dimming
+		        			b = (screenBacklightBrightness - 10) / (100.0f - 10.0f); // 0..1
+		        			b = minb + b * (1-minb); // minb..1
+				        	if (b < minb) // BRIGHTNESS_OVERRIDE_OFF
 				        		b = minb;
-				        		dimmingAlpha = 255 - (11-screenBacklightBrightness) * 180 / 10; 
-			        		}
-			        	} else
-			        		b = -1.0f; //BRIGHTNESS_OVERRIDE_NONE
-			        	mReaderView.setDimmingAlpha(dimmingAlpha);
-			        	log.d("Brightness: " + b + ", dim: " + dimmingAlpha);
-			        	if ( attrs.screenBrightness != b ) {
-			        		attrs.screenBrightness = b;
-			        		changed = true;
-			        	}
-			        	// hack to set buttonBrightness field
-			        	if ( !brightnessHackError )
-			        	try {
-				        	Field bb = attrs.getClass().getField("buttonBrightness");
-				        	if ( bb!=null ) {
-				        		Float oldValue = (Float)bb.get(attrs);
-				        		//if ( oldValue==null || oldValue.floatValue()!=0 ) {
-				        			bb.set(attrs, Float.valueOf(0.0f));
-					        		changed = true;
-				        		//}
-				        	}
-			        	} catch ( Exception e ) {
-			        		log.e("WindowManager.LayoutParams.buttonBrightness field is not found, cannot turn buttons backlight off");
-			        		brightnessHackError = true;
-			        	}
-			        	//attrs.buttonBrightness = 0;
-			        	if ( changed ) {
-			        		log.d("Window attribute changed: " + attrs);
-			        		wnd.setAttributes(attrs);
-			        	}
-			        	//attrs.screenOrientation = LayoutParams.SCREEN_;
-			        }
+				        	else if (b > 1.0f)
+				        		b = 1.0f; //BRIGHTNESS_OVERRIDE_FULL
+		        		} else {
+			        		// minimal brightness with colors dimming
+			        		b = minb;
+			        		dimmingAlpha = 255 - (11-screenBacklightBrightness) * 180 / 10; 
+		        		}
+		        	} else {
+		        		// system
+		        		b = -1.0f; //BRIGHTNESS_OVERRIDE_NONE
+		        	}
+		        	mReaderView.setDimmingAlpha(dimmingAlpha);
+			    	log.d("Brightness: " + b + ", dim: " + dimmingAlpha);
+			    	updateBacklightBrightness(b);
+			    	updateButtonsBrightness(keyBacklightOff ? 0.0f : -1.0f);
 				} catch ( Exception e ) {
 					// ignore
 				}
@@ -766,6 +903,14 @@ public class CoolReader extends Activity
 		mReaderView = null;
 		//mEngine = null;
 		mBackgroundThread = null;
+		
+		//===========================
+		// Donations support code
+		if (billingSupported) {
+			mBillingService.unbind();
+			//mPurchaseDatabase.close();
+		}
+		
 		log.i("CoolReader.onDestroy() exiting");
 		super.onDestroy();
 	}
@@ -849,11 +994,11 @@ public class CoolReader extends Activity
 		super.onPostResume();
 	}
 
-	private boolean restarted = false;
+//	private boolean restarted = false;
 	@Override
 	protected void onRestart() {
 		log.i("CoolReader.onRestart()");
-		restarted = true;
+		//restarted = true;
 		super.onRestart();
 	}
 
@@ -872,6 +1017,18 @@ public class CoolReader extends Activity
 		
 		if (DeviceInfo.EINK_SCREEN) {
 			setScreenUpdateMode(props.getInt(ReaderView.PROP_APP_SCREEN_UPDATE_MODE, 0), mReaderView);
+            if (DeviceInfo.EINK_SONY) {
+                SharedPreferences pref = getSharedPreferences(PREF_FILE, 0);
+                String res = pref.getString(PREF_LAST_BOOK, null);
+                if( res != null && res.length() > 0 ) {
+                    SonyBookSelector selector = new SonyBookSelector(this);
+                    long l = selector.getContentId(res);
+                    if(l != 0) {
+                       selector.setReadingTime(l);
+                       selector.requestBookSelection(l);
+                    }
+                }
+            }
 		}
 		
 		backlightControl.onUserActivity();
@@ -898,6 +1055,10 @@ public class CoolReader extends Activity
 		mPaused = false;
 		
 		backlightControl.onUserActivity();
+
+		// Donations support code
+		if (billingSupported)
+			ResponseHandler.register(mPurchaseObserver);
 		
 		if (!isFirstStart)
 			return;
@@ -922,7 +1083,7 @@ public class CoolReader extends Activity
 		}
         //log.i("waiting for engine tasks completion");
         //engine.waitTasksCompletion();
-		restarted = false;
+//		restarted = false;
 		stopped = false;
 		final String fileName = fileToLoadOnStart;
 		mBackgroundThread.postGUI(new Runnable() {
@@ -991,6 +1152,11 @@ public class CoolReader extends Activity
 		// will close book at onDestroy()
 		if ( CLOSE_BOOK_ON_STOP )
 			mReaderView.close();
+
+		// Donations support code
+		if (billingSupported)
+			ResponseHandler.unregister(mPurchaseObserver);
+		
 		super.onStop();
 		log.i("CoolReader.onStop() exiting");
 	}
@@ -1038,7 +1204,7 @@ public class CoolReader extends Activity
 	{
 		//showView(readerView);
 		//setContentView(readerView);
-		mReaderView.loadDocument(item);
+		mReaderView.loadDocument(item, null);
 	}
 	
 	public void showBrowser( final FileInfo fileToShow )
@@ -1094,8 +1260,16 @@ public class CoolReader extends Activity
 	    	item = menu.findItem(R.id.cr3_mi_toggle_day_night);
 	    	if ( item!=null )
 	    		item.setTitle(mReaderView.isNightMode() ? R.string.mi_night_mode_disable : R.string.mi_night_mode_enable);
+	    	item = menu.findItem(R.id.cr3_mi_toggle_text_autoformat);
+	    	if ( item!=null ) {
+	    		if (mReaderView.isTextFormat())
+	    			item.setTitle(mReaderView.isTextAutoformatEnabled() ? R.string.mi_text_autoformat_disable : R.string.mi_text_autoformat_enable);
+	    		else
+	    			menu.removeItem(item.getItemId());
+	    	}
 	    } else {
-	    	inflater.inflate(R.menu.cr3_browser_menu, menu);
+	    	FileInfo currDir = mBrowser.getCurrentDir();
+	    	inflater.inflate(currDir!=null && currDir.isOPDSRoot() ? R.menu.cr3_browser_menu : R.menu.cr3_browser_menu, menu);
 	    	if ( !isBookOpened() ) {
 	    		MenuItem item = menu.findItem(R.id.book_back_to_reading);
 	    		if ( item!=null )
@@ -1119,18 +1293,29 @@ public class CoolReader extends Activity
 	    return true;
 	}
 
-	public void showToast( int stringResourceId )
-	{
-		String s = getString(stringResourceId);
-		if ( s!=null )
-			showToast(s);
+	public void showToast(int stringResourceId) {
+		showToast(stringResourceId, Toast.LENGTH_LONG);
 	}
 
-	public void showToast( String msg )
-	{
+	public void showToast(int stringResourceId, int duration) {
+		String s = getString(stringResourceId);
+		if (s != null)
+			showToast(s, duration);
+	}
+
+	public void showToast(String msg) {
+		showToast(msg, Toast.LENGTH_LONG);
+	}
+
+	public void showToast(String msg, int duration) {
 		log.v("showing toast: " + msg);
-		Toast toast = Toast.makeText(this, msg, Toast.LENGTH_SHORT);
-		toast.show();
+		if (DeviceInfo.USE_CUSTOM_TOAST) {
+			ToastView.showToast(mReaderView, msg, Toast.LENGTH_LONG);
+		} else {
+			// classic Toast
+			Toast toast = Toast.makeText(this, msg, duration);
+			toast.show();
+		}
 	}
 
 	public interface InputHandler {
@@ -1144,16 +1329,18 @@ public class CoolReader extends Activity
 		private EditText input;
 		public InputDialog( CoolReader activity, final String title, boolean isNumberEdit, final InputHandler handler )
 		{
-			super(activity, R.string.dlg_button_ok, R.string.dlg_button_cancel, true);
+			super(activity, title, true, true);
 			this.handler = handler;
-			setTitle(title);
-	        input = new EditText(getContext());
+	        LayoutInflater mInflater = LayoutInflater.from(getContext());
+	        ViewGroup layout = (ViewGroup)mInflater.inflate(R.layout.line_edit_dlg, null);
+	        input = (EditText)layout.findViewById(R.id.input_field);
+	        //input = new EditText(getContext());
 	        if ( isNumberEdit )
 	        	input.setKeyListener(DigitsKeyListener.getInstance("0123456789."));
 //		        input.getText().setFilters(new InputFilter[] {
 //		        	new DigitsKeyListener()        
 //		        });
-	        setView(input);
+	        setView(layout);
 		}
 		@Override
 		protected void onNegativeButtonClick() {
@@ -1270,6 +1457,9 @@ public class CoolReader extends Activity
 		case R.id.book_opds_root:
 			mBrowser.showOPDSRootDirectory();
 			return true;
+		case R.id.catalog_add:
+			mBrowser.editOPDSCatalog(null);
+			return true;
 		case R.id.book_recent_books:
 			mBrowser.showRecentBooks();
 			return true;
@@ -1353,8 +1543,8 @@ public class CoolReader extends Activity
 		new DefKeyAction(KeyEvent.KEYCODE_DPAD_DOWN, ReaderAction.NORMAL, ReaderAction.PAGE_DOWN),
 		new DefKeyAction(KeyEvent.KEYCODE_DPAD_UP, ReaderAction.LONG, (DeviceInfo.EINK_SONY? ReaderAction.PAGE_UP_10 : ReaderAction.REPEAT)),
 		new DefKeyAction(KeyEvent.KEYCODE_DPAD_DOWN, ReaderAction.LONG, (DeviceInfo.EINK_SONY? ReaderAction.PAGE_DOWN_10 : ReaderAction.REPEAT)),
-		new DefKeyAction(KeyEvent.KEYCODE_DPAD_LEFT, ReaderAction.NORMAL, ReaderAction.PAGE_UP_10),
-		new DefKeyAction(KeyEvent.KEYCODE_DPAD_RIGHT, ReaderAction.NORMAL, ReaderAction.PAGE_DOWN_10),
+		new DefKeyAction(KeyEvent.KEYCODE_DPAD_LEFT, ReaderAction.NORMAL, (DeviceInfo.NAVIGATE_LEFTRIGHT ? ReaderAction.PAGE_UP : ReaderAction.PAGE_UP_10)),
+		new DefKeyAction(KeyEvent.KEYCODE_DPAD_RIGHT, ReaderAction.NORMAL, (DeviceInfo.NAVIGATE_LEFTRIGHT ? ReaderAction.PAGE_DOWN : ReaderAction.PAGE_DOWN_10)),
 		new DefKeyAction(KeyEvent.KEYCODE_DPAD_LEFT, ReaderAction.LONG, ReaderAction.REPEAT),
 		new DefKeyAction(KeyEvent.KEYCODE_DPAD_RIGHT, ReaderAction.LONG, ReaderAction.REPEAT),
 		new DefKeyAction(KeyEvent.KEYCODE_VOLUME_UP, ReaderAction.NORMAL, ReaderAction.PAGE_UP),
@@ -1391,6 +1581,10 @@ public class CoolReader extends Activity
 		new DefKeyAction(ReaderView.SONY_DPAD_DOWN_SCANCODE, ReaderAction.LONG, ReaderAction.PAGE_DOWN_10),
 		new DefKeyAction(ReaderView.SONY_DPAD_UP_SCANCODE, ReaderAction.LONG, ReaderAction.PAGE_UP_10),
 
+		
+		new DefKeyAction(ReaderView.KEYCODE_ESCAPE, ReaderAction.NORMAL, ReaderAction.PAGE_DOWN),
+		new DefKeyAction(ReaderView.KEYCODE_ESCAPE, ReaderAction.LONG, ReaderAction.REPEAT),
+		
 //	    public static final int KEYCODE_PAGE_BOTTOMLEFT = 0x5d; // fwd
 //	    public static final int KEYCODE_PAGE_BOTTOMRIGHT = 0x5f; // fwd
 //	    public static final int KEYCODE_PAGE_TOPLEFT = 0x5c; // back
@@ -1417,38 +1611,13 @@ public class CoolReader extends Activity
 		new DefTapAction(5, false, ReaderAction.READER_MENU),
 		new DefTapAction(5, true, ReaderAction.OPTIONS),
 	};
-	File propsFile;
-	private static final String SETTINGS_FILE_NAME = "cr3.ini";
-	private static boolean DEBUG_RESET_OPTIONS = false;
-	private Properties loadSettings()
-	{
+	
+	public Properties loadSettings(File file) {
         Properties props = new Properties();
 
-		File[] dataDirs = mEngine.getDataDirectories(null, false, true);
-		File existingFile = null;
-		for ( File dir : dataDirs ) {
-			File f = new File(dir, SETTINGS_FILE_NAME);
-			if ( f.exists() && f.isFile() ) {
-				existingFile = f;
-				break;
-			}
-		}
-        if ( existingFile!=null )
-        	propsFile = existingFile;
-        else {
-	        File propsDir = getDir("settings", Context.MODE_PRIVATE);
-			propsFile = new File( propsDir, SETTINGS_FILE_NAME);
-			File dataDir = Engine.getExternalSettingsDir();
-			if ( dataDir!=null ) {
-				log.d("external settings dir: " + dataDir);
-				propsFile = Engine.checkOrMoveFile(dataDir, propsDir, SETTINGS_FILE_NAME);
-			} else {
-				propsDir.mkdirs();
-			}
-        }
-        if ( propsFile.exists() && !DEBUG_RESET_OPTIONS ) {
+        if ( file.exists() && !DEBUG_RESET_OPTIONS ) {
         	try {
-        		FileInputStream is = new FileInputStream(propsFile);
+        		FileInputStream is = new FileInputStream(file);
         		props.load(is);
         		log.v("" + props.size() + " settings items loaded from file " + propsFile.getAbsolutePath() );
         	} catch ( Exception e ) {
@@ -1474,18 +1643,42 @@ public class CoolReader extends Activity
     		props.applyDefault(ReaderView.PROP_PAGE_ANIMATION, ReaderView.PAGE_ANIMATION_SLIDE2);
         }
         
+        props.applyDefault(ReaderView.PROP_APP_THEME, DeviceInfo.FORCE_LIGHT_THEME ? "WHITE" : "LIGHT");
+        props.applyDefault(ReaderView.PROP_APP_THEME_DAY, DeviceInfo.FORCE_LIGHT_THEME ? "WHITE" : "LIGHT");
+        props.applyDefault(ReaderView.PROP_APP_THEME_NIGHT, DeviceInfo.FORCE_LIGHT_THEME ? "BLACK" : "DARK");
         props.applyDefault(ReaderView.PROP_APP_SELECTION_PERSIST, "0");
-        props.applyDefault(ReaderView.PROP_APP_SCREEN_BACKLIGHT_LOCK, "0");
+        props.applyDefault(ReaderView.PROP_APP_SCREEN_BACKLIGHT_LOCK, "3");
+        if ("1".equals(props.getProperty(ReaderView.PROP_APP_SCREEN_BACKLIGHT_LOCK)))
+            props.setProperty(ReaderView.PROP_APP_SCREEN_BACKLIGHT_LOCK, "3");
         props.applyDefault(ReaderView.PROP_APP_BOOK_PROPERTY_SCAN_ENABLED, "1");
+        props.applyDefault(ReaderView.PROP_APP_KEY_BACKLIGHT_OFF, DeviceInfo.SAMSUNG_BUTTONS_HIGHLIGHT_PATCH ? "0" : "1");
         // autodetect best initial font size based on display resolution
-        int screenWidth = getWindowManager().getDefaultDisplay().getWidth();
+        DisplayMetrics m = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(m);
+        int screenWidth = m.widthPixels;//getWindowManager().getDefaultDisplay().getWidth();
         int fontSize = 20;
-        if ( screenWidth>=400 )
+        String hmargin = "4";
+        String vmargin = "2";
+        if ( screenWidth<=320 ) {
+        	fontSize = 20;
+            hmargin = "4";
+            vmargin = "2";
+        } else if ( screenWidth<=400 ) {
         	fontSize = 24;
-        else if ( screenWidth>=600 )
+            hmargin = "10";
+            vmargin = "4";
+        } else if ( screenWidth<=600 ) {
         	fontSize = 28;
+            hmargin = "20";
+            vmargin = "8";
+        } else {
+        	fontSize = 32;
+            hmargin = "25";
+            vmargin = "15";
+        }
         props.applyDefault(ReaderView.PROP_FONT_SIZE, String.valueOf(fontSize));
         props.applyDefault(ReaderView.PROP_FONT_FACE, "Droid Sans");
+        props.applyDefault(ReaderView.PROP_FONT_HINTING, "2");
         props.applyDefault(ReaderView.PROP_STATUS_FONT_FACE, "Droid Sans");
         props.applyDefault(ReaderView.PROP_STATUS_FONT_SIZE, DeviceInfo.EINK_NOOK ? "15" : "16");
         props.applyDefault(ReaderView.PROP_FONT_COLOR, "#000000");
@@ -1508,13 +1701,14 @@ public class CoolReader extends Activity
 		props.applyDefault(ReaderView.PROP_SHOW_TIME, "1");
 		props.applyDefault(ReaderView.PROP_FONT_ANTIALIASING, "2");
 		props.applyDefault(ReaderView.PROP_APP_SHOW_COVERPAGES, "1");
-		props.applyDefault(ReaderView.PROP_APP_SCREEN_ORIENTATION, DeviceInfo.EINK_SCREEN ? "0" : "4");
+		props.applyDefault(ReaderView.PROP_APP_SCREEN_ORIENTATION, "0"); // DeviceInfo.EINK_SCREEN ? "0" : "4"
 		props.applyDefault(ReaderView.PROP_CONTROLS_ENABLE_VOLUME_KEYS, "1");
 		props.applyDefault(ReaderView.PROP_APP_TAP_ZONE_HILIGHT, "0");
 		props.applyDefault(ReaderView.PROP_APP_BOOK_SORT_ORDER, FileInfo.DEF_SORT_ORDER.name());
 		props.applyDefault(ReaderView.PROP_APP_DICTIONARY, dicts[0].id);
 		props.applyDefault(ReaderView.PROP_APP_FILE_BROWSER_HIDE_EMPTY_FOLDERS, "0");
 		props.applyDefault(ReaderView.PROP_APP_SELECTION_ACTION, "0");
+		props.applyDefault(ReaderView.PROP_APP_MULTI_SELECTION_ACTION, "0");
 		//props.applyDefault(ReaderView.PROP_FALLBACK_FONT_FACE, "Droid Fallback");
 		props.put(ReaderView.PROP_FALLBACK_FONT_FACE, "Droid Sans Fallback");
 
@@ -1527,16 +1721,16 @@ public class CoolReader extends Activity
 		props.applyDefault(ReaderView.PROP_IMG_SCALING_ZOOMOUT_INLINE_SCALE, "0");
 		props.applyDefault(ReaderView.PROP_IMG_SCALING_ZOOMIN_INLINE_SCALE, "0");
 		
-		props.applyDefault(ReaderView.PROP_PAGE_MARGIN_LEFT, densityDpi > 160 ? "10" : DeviceInfo.EINK_NOOK ? "20" : "4");
-		props.applyDefault(ReaderView.PROP_PAGE_MARGIN_RIGHT, densityDpi > 160 ? "10" : DeviceInfo.EINK_NOOK ? "20" : "4");
-		props.applyDefault(ReaderView.PROP_PAGE_MARGIN_TOP, densityDpi > 160 ? "8" : "2");
-		props.applyDefault(ReaderView.PROP_PAGE_MARGIN_BOTTOM, densityDpi > 160 ? "8" : "2");
+		props.applyDefault(ReaderView.PROP_PAGE_MARGIN_LEFT, hmargin);
+		props.applyDefault(ReaderView.PROP_PAGE_MARGIN_RIGHT, hmargin);
+		props.applyDefault(ReaderView.PROP_PAGE_MARGIN_TOP, vmargin);
+		props.applyDefault(ReaderView.PROP_PAGE_MARGIN_BOTTOM, vmargin);
 		
         props.applyDefault(ReaderView.PROP_APP_SCREEN_UPDATE_MODE, "0");
         props.applyDefault(ReaderView.PROP_APP_SCREEN_UPDATE_INTERVAL, "10");
         
         props.applyDefault(ReaderView.PROP_NIGHT_MODE, "0");
-        if (DeviceInfo.EINK_SCREEN) {
+        if (DeviceInfo.FORCE_LIGHT_THEME) {
         	props.applyDefault(ReaderView.PROP_PAGE_BACKGROUND_IMAGE, Engine.NO_TEXTURE.id);
         } else {
         	if ( props.getBool(ReaderView.PROP_NIGHT_MODE, false) )
@@ -1555,7 +1749,46 @@ public class CoolReader extends Activity
 		props.applyDefault(ReaderView.PROP_APP_FILE_BROWSER_SIMPLE_MODE, "0");
 		
 		props.applyDefault(ReaderView.PROP_APP_HIGHLIGHT_BOOKMARKS, "1");
-		
+        
+        return props;
+	}
+	
+	public File getSettingsFile(int profile) {
+		if (profile == 0)
+			return propsFile;
+		return new File(propsFile.getAbsolutePath() + ".profile" + profile);
+	}
+	
+	File propsFile;
+	private static final String SETTINGS_FILE_NAME = "cr3.ini";
+	private static boolean DEBUG_RESET_OPTIONS = false;
+	private Properties loadSettings()
+	{
+		File[] dataDirs = mEngine.getDataDirectories(null, false, true);
+		File existingFile = null;
+		for ( File dir : dataDirs ) {
+			File f = new File(dir, SETTINGS_FILE_NAME);
+			if ( f.exists() && f.isFile() ) {
+				existingFile = f;
+				break;
+			}
+		}
+        if ( existingFile!=null )
+        	propsFile = existingFile;
+        else {
+	        File propsDir = getDir("settings", Context.MODE_PRIVATE);
+			propsFile = new File( propsDir, SETTINGS_FILE_NAME);
+			File dataDir = Engine.getExternalSettingsDir();
+			if ( dataDir!=null ) {
+				log.d("external settings dir: " + dataDir);
+				propsFile = Engine.checkOrMoveFile(dataDir, propsDir, SETTINGS_FILE_NAME);
+			} else {
+				propsDir.mkdirs();
+			}
+        }
+        
+        Properties props = loadSettings(propsFile);
+
 		return props;
 	}
 
@@ -1581,6 +1814,7 @@ public class CoolReader extends Activity
 		new DictInfo("ColorDictApi", "ColorDict new / GoldenDict", "com.socialnmobile.colordict", "com.socialnmobile.colordict.activity.Main", Intent.ACTION_SEARCH, 1),
 		new DictInfo("AardDict", "Aard Dictionary", "aarddict.android", "aarddict.android.Article", Intent.ACTION_SEARCH, 0),
 		new DictInfo("AardDictLookup", "Aard Dictionary Lookup", "aarddict.android", "aarddict.android.Lookup", Intent.ACTION_SEARCH, 0),
+		new DictInfo("Dictan", "Dictan Dictionary", "", "", Intent.ACTION_VIEW, 2),
 	};
 
 	public DictInfo[] getDictList() {
@@ -1598,12 +1832,20 @@ public class CoolReader extends Activity
 		}
 	}
 
+	private final static int DICTAN_ARTICLE_REQUEST_CODE = 100;
+	
+	private final static String DICTAN_ARTICLE_WORD = "article.word";
+	
+	private final static String DICTAN_ERROR_MESSAGE = "error.message";
+
+	private final static int FLAG_ACTIVITY_CLEAR_TASK = 0x00008000;
+	
 	private void findInDictionaryInternal(String s) {
 		switch (currentDict.internal) {
 		case 0:
 			Intent intent0 = new Intent(currentDict.action).setComponent(new ComponentName(
 				currentDict.packageName, currentDict.className
-				)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+				)).addFlags(DeviceInfo.getSDKLevel() >= 11 ? FLAG_ACTIVITY_CLEAR_TASK : Intent.FLAG_ACTIVITY_NEW_TASK);
 			if (s!=null)
 				intent0.putExtra(SearchManager.QUERY, s);
 			try {
@@ -1635,9 +1877,55 @@ public class CoolReader extends Activity
 				showToast("Dictionary \"" + currentDict.name + "\" is not installed");
 			}
 			break;
+		case 2:
+			// Dictan support
+			Intent intent2 = new Intent("android.intent.action.VIEW");
+			// Add custom category to run the Dictan external dispatcher
+            intent2.addCategory("info.softex.dictan.EXTERNAL_DISPATCHER");
+            
+   	        // Don't include the dispatcher in activity  
+            // because it doesn't have any content view.	      
+            intent2.setFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
+		  
+	        intent2.putExtra(DICTAN_ARTICLE_WORD, s);
+			  
+	        try {
+	        	startActivityForResult(intent2, DICTAN_ARTICLE_REQUEST_CODE);
+	        } catch (ActivityNotFoundException e) {
+				showToast("Dictionary \"" + currentDict.name + "\" is not installed");
+	        }
+			break;
 		}
 	}
 
+	@Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+        if (requestCode == DICTAN_ARTICLE_REQUEST_CODE) {
+	       	switch (resultCode) {
+	        	
+	        	// The article has been shown, the intent is never expected null
+			case RESULT_OK:
+				break;
+					
+			// Error occured
+			case RESULT_CANCELED: 
+				String errMessage = "Unknown Error.";
+				if (intent != null) {
+					errMessage = "The Requested Word: " + 
+					intent.getStringExtra(DICTAN_ARTICLE_WORD) + 
+					". Error: " + intent.getStringExtra(DICTAN_ERROR_MESSAGE);
+				}
+				showToast(errMessage);
+				break;
+					
+			// Must never occur
+			default: 
+				showToast("Unknown Result Code: " + resultCode);
+				break;
+			}
+        }
+    }
+	
 	public void showDictionary() {
 		findInDictionaryInternal(null);
 	}
@@ -1671,16 +1959,70 @@ public class CoolReader extends Activity
 		}
 	}
 	
-	public void saveSettings( Properties settings )
+	public Properties loadSettings(int profile) {
+		File f = getSettingsFile(profile);
+		if (!f.exists() && profile != 0)
+			f = getSettingsFile(0);
+		Properties res = loadSettings(f);
+		if (profile != 0) {
+			res = filterProfileSettings(res);
+			res.setInt(Settings.PROP_PROFILE_NUMBER, profile);
+		}
+		return res;
+	}
+	
+	public static Properties filterProfileSettings(Properties settings) {
+		Properties res = new Properties();
+		res.entrySet();
+		for (Object k : settings.keySet()) {
+			String key = (String)k;
+			String value = settings.getProperty(key);
+			boolean found = false;
+			for (String pattern : Settings.PROFILE_SETTINGS) {
+				if (pattern.endsWith("*")) {
+					if (key.startsWith(pattern.substring(0, pattern.length()-1))) {
+						found = true;
+						break;
+					}
+				} else if (pattern.equalsIgnoreCase(key)) {
+					found = true;
+					break;
+				} else if (key.startsWith("styles.")) {
+					found = true;
+					break;
+				}
+			}
+			if (found) {
+				res.setProperty(key, value);
+			}
+		}
+		return res;
+	}
+	
+	public void saveSettings(int profile, Properties settings) {
+		File f = getSettingsFile(profile);
+		if (profile != 0) {
+			settings = filterProfileSettings(settings);
+			settings.setInt(Settings.PROP_PROFILE_NUMBER, profile);
+		}
+		saveSettings(f, settings);
+	}
+	
+	public void saveSettings(File f, Properties settings)
 	{
 		try {
-			log.v("saveSettings() " + settings);
-    		FileOutputStream os = new FileOutputStream(propsFile);
+			log.v("saveSettings()");
+    		FileOutputStream os = new FileOutputStream(f);
     		settings.store(os, "Cool Reader 3 settings");
-			log.i("Settings successfully saved to file " + propsFile.getAbsolutePath());
+			log.i("Settings successfully saved to file " + f.getAbsolutePath());
 		} catch ( Exception e ) {
 			log.e("exception while saving settings", e);
 		}
+	}
+
+	public void saveSettings(Properties settings)
+	{
+		saveSettings(propsFile, settings);
 	}
 
 	private static Debug.MemoryInfo info = new Debug.MemoryInfo();
@@ -1728,4 +2070,196 @@ public class CoolReader extends Activity
         emailIntent.putExtra(android.content.Intent.EXTRA_TEXT, text);
 		startActivity(Intent.createChooser(emailIntent, null));	
 	}
+
+	public void askConfirmation(int questionResourceId, final Runnable action) {
+		AlertDialog.Builder dlg = new AlertDialog.Builder(this);
+		dlg.setTitle(questionResourceId);
+		dlg.setPositiveButton(R.string.dlg_button_ok, new OnClickListener() {
+			public void onClick(DialogInterface arg0, int arg1) {
+				action.run();
+			}
+		});
+		dlg.setNegativeButton(R.string.dlg_button_cancel, new OnClickListener() {
+			public void onClick(DialogInterface arg0, int arg1) {
+				// do nothing
+			}
+		});
+		dlg.show();
+	}
+
+	//==============================================================
+	// 
+	// Donations related code
+	// (from Dungeons sample) 
+    private static final int DIALOG_CANNOT_CONNECT_ID = 1;
+    private static final int DIALOG_BILLING_NOT_SUPPORTED_ID = 2;
+    /**
+     * Used for storing the log text.
+     */
+    private static final String LOG_TEXT_KEY = "DUNGEONS_LOG_TEXT";
+
+    /**
+     * The SharedPreferences key for recording whether we initialized the
+     * database.  If false, then we perform a RestoreTransactions request
+     * to get all the purchases for this user.
+     */
+    private static final String DB_INITIALIZED = "db_initialized";
+
+    /**
+     * Each product in the catalog is either MANAGED or UNMANAGED.  MANAGED
+     * means that the product can be purchased only once per user (such as a new
+     * level in a game). The purchase is remembered by Android Market and
+     * can be restored if this application is uninstalled and then
+     * re-installed. UNMANAGED is used for products that can be used up and
+     * purchased multiple times (such as poker chips). It is up to the
+     * application to keep track of UNMANAGED products for the user.
+     */
+    private enum Managed { MANAGED, UNMANAGED }
+
+    private CRPurchaseObserver mPurchaseObserver;
+    private BillingService mBillingService;
+    private Handler mHandler;
+    private DonationListener mDonationListener = null;
+    private boolean billingSupported = false;
+    private double mTotalDonations = 0;
+    
+    public boolean isDonationSupported() {
+    	return billingSupported;
+    }
+    public void setDonationListener(DonationListener listener) {
+    	mDonationListener = listener;
+    }
+    public static interface DonationListener {
+    	void onDonationTotalChanged(double total);
+    }
+    public double getTotalDonations() {
+    	return mTotalDonations;
+    }
+    public boolean makeDonation(double amount) {
+		final String itemName = "donation" + (amount >= 1 ? String.valueOf((int)amount) : String.valueOf(amount));
+    	log.i("makeDonation is called, itemName=" + itemName);
+    	if (!billingSupported)
+    		return false;
+    	String mPayloadContents = null;
+    	String mSku = itemName;
+        if (!mBillingService.requestPurchase(mSku, mPayloadContents)) {
+        	showToast("Purchase is failed");
+        }
+    	return true;
+    }
+    
+
+	private static String DONATIONS_PREF_FILE = "cr3donations";
+	private static String DONATIONS_PREF_TOTAL_AMOUNT = "total";
+    /**
+     * A {@link PurchaseObserver} is used to get callbacks when Android Market sends
+     * messages to this application so that we can update the UI.
+     */
+    private class CRPurchaseObserver extends PurchaseObserver {
+    	
+    	private String TAG = "cr3Billing";
+        public CRPurchaseObserver(Handler handler) {
+            super(CoolReader.this, handler);
+        }
+
+        @Override
+        public void onBillingSupported(boolean supported) {
+            if (Consts.DEBUG) {
+                Log.i(TAG, "supported: " + supported);
+            }
+            if (supported) {
+            	billingSupported = true;
+        		SharedPreferences pref = getSharedPreferences(DONATIONS_PREF_FILE, 0);
+        		try {
+        			mTotalDonations = pref.getFloat(DONATIONS_PREF_TOTAL_AMOUNT, 0.0f);
+        		} catch (Exception e) {
+        			log.e("exception while reading total donations from preferences", e);
+        		}
+            	// TODO:
+//                restoreDatabase();
+            }
+        }
+
+        @Override
+        public void onPurchaseStateChange(PurchaseState purchaseState, String itemId,
+                int quantity, long purchaseTime, String developerPayload) {
+            if (Consts.DEBUG) {
+                Log.i(TAG, "onPurchaseStateChange() itemId: " + itemId + " " + purchaseState);
+            }
+
+            if (developerPayload == null) {
+                logProductActivity(itemId, purchaseState.toString());
+            } else {
+                logProductActivity(itemId, purchaseState + "\n\t" + developerPayload);
+            }
+
+            if (purchaseState == PurchaseState.PURCHASED) {
+            	double amount = 0;
+            	try {
+	            	if (itemId.startsWith("donation"))
+	            		amount = Double.parseDouble(itemId.substring(8));
+            	} catch (NumberFormatException e) {
+            		//
+            	}
+
+            	mTotalDonations += amount;
+        		SharedPreferences pref = getSharedPreferences(DONATIONS_PREF_FILE, 0);
+        		pref.edit().putString(DONATIONS_PREF_TOTAL_AMOUNT, String.valueOf(mTotalDonations)).commit();
+
+            	if (mDonationListener != null)
+            		mDonationListener.onDonationTotalChanged(mTotalDonations);
+                //mOwnedItems.add(itemId);
+            }
+//            mCatalogAdapter.setOwnedItems(mOwnedItems);
+//            mOwnedItemsCursor.requery();
+        }
+
+        @Override
+        public void onRequestPurchaseResponse(RequestPurchase request,
+                ResponseCode responseCode) {
+            if (Consts.DEBUG) {
+                Log.d(TAG, request.mProductId + ": " + responseCode);
+            }
+            if (responseCode == ResponseCode.RESULT_OK) {
+                if (Consts.DEBUG) {
+                    Log.i(TAG, "purchase was successfully sent to server");
+                }
+                logProductActivity(request.mProductId, "sending purchase request");
+            } else if (responseCode == ResponseCode.RESULT_USER_CANCELED) {
+                if (Consts.DEBUG) {
+                    Log.i(TAG, "user canceled purchase");
+                }
+                logProductActivity(request.mProductId, "dismissed purchase dialog");
+            } else {
+                if (Consts.DEBUG) {
+                    Log.i(TAG, "purchase failed");
+                }
+                logProductActivity(request.mProductId, "request purchase returned " + responseCode);
+            }
+        }
+
+        @Override
+        public void onRestoreTransactionsResponse(RestoreTransactions request,
+                ResponseCode responseCode) {
+            if (responseCode == ResponseCode.RESULT_OK) {
+                if (Consts.DEBUG) {
+                    Log.d(TAG, "completed RestoreTransactions request");
+                }
+                // Update the shared preferences so that we don't perform
+                // a RestoreTransactions again.
+                SharedPreferences prefs = getPreferences(Context.MODE_PRIVATE);
+                SharedPreferences.Editor edit = prefs.edit();
+                edit.putBoolean(DB_INITIALIZED, true);
+                edit.commit();
+            } else {
+                if (Consts.DEBUG) {
+                    Log.d(TAG, "RestoreTransactions error: " + responseCode);
+                }
+            }
+        }
+    }
+    private void logProductActivity(String product, String activity) {
+    	// TODO: some logging
+    	Log.i(LOG_TEXT_KEY, activity);
+    }
 }

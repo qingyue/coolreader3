@@ -52,8 +52,10 @@
 #define DOC_FLAG_ENABLE_FOOTNOTES       2
 /// docFlag mask, enable paperbook-like footnotes
 #define DOC_FLAG_PREFORMATTED_TEXT      4
+/// docFlag mask, enable document embedded fonts (EPUB)
+#define DOC_FLAG_ENABLE_DOC_FONTS       8
 /// default docFlag set
-#define DOC_FLAG_DEFAULTS (DOC_FLAG_ENABLE_INTERNAL_STYLES|DOC_FLAG_ENABLE_FOOTNOTES)
+#define DOC_FLAG_DEFAULTS (DOC_FLAG_ENABLE_INTERNAL_STYLES|DOC_FLAG_ENABLE_FOOTNOTES|DOC_FLAG_ENABLE_DOC_FONTS)
 
 
 
@@ -197,6 +199,8 @@ public:
     virtual void OnExternalLink( lString16 url, ldomNode * node ) { }
     /// Called when page images should be invalidated (clearImageCache() called in LVDocView)
     virtual void OnImageCacheClear() { }
+    /// return true if reload will be processed by external code, false to let internal code process it
+    virtual bool OnRequestReload() { return false; }
     /// destructor
     virtual ~LVDocViewCallback() { }
 };
@@ -305,13 +309,13 @@ class ldomTextStorageChunk
 {
     friend class ldomDataStorageManager;
     ldomDataStorageManager * _manager;
+    ldomTextStorageChunk * _nextRecent;
+    ldomTextStorageChunk * _prevRecent;
     lUInt8 * _buf;     /// buffer for uncompressed data
     lUInt32 _bufsize;  /// _buf (uncompressed) area size, bytes
     lUInt32 _bufpos;  /// _buf (uncompressed) data write position (for appending of new data)
     lUInt16 _index;  /// ? index of chunk in storage
     char _type;       /// type, to show in log
-    ldomTextStorageChunk * _nextRecent;
-    ldomTextStorageChunk * _prevRecent;
     bool _saved;
 
     void setunpacked( const lUInt8 * buf, int bufsize );
@@ -502,6 +506,16 @@ public:
         return _docFlags;
     }
 
+    inline int getDocIndex()
+    {
+        return _docIndex;
+    }
+
+    inline int getFontContextDocIndex()
+    {
+        return (_docFlags & DOC_FLAG_ENABLE_DOC_FONTS) ? _docIndex : -1;
+    }
+
     void setDocFlags( lUInt32 value );
 
 
@@ -531,7 +545,6 @@ public:
     /// put all object into persistent storage
     virtual void persist( CRTimerUtil & maxTime );
 #endif
-
 
 
     /// creates empty collection
@@ -1841,8 +1854,8 @@ class ldomNavigationHistory
         int _pos;
         void clearTail()
         {
-            if ( _links.length()-_pos > 0 )
-                _links.erase(_pos, _links.length()-_pos);
+            if (_links.length() > _pos)
+                _links.erase(_pos, _links.length() - _pos);
         }
     public:
         void clear()
@@ -1920,6 +1933,8 @@ private:
 
     LVHashTable<lUInt32, ListNumberingPropsRef> lists;
 
+    LVEmbeddedFontList _fontList;
+
 
 #if BUILD_LITE!=1
     /// load document cache file content
@@ -1957,6 +1972,11 @@ public:
     {
         return !_def_style.isNull();
     }
+
+    /// return document's embedded font list
+    LVEmbeddedFontList & getEmbeddedFontList() { return _fontList; }
+    /// register embedded document fonts in font manager, if any exist in document
+    void registerEmbeddedFonts();
 #endif
 
     /// returns pointer to TOC root node
@@ -2202,8 +2222,14 @@ private:
     ldomNode * baseElement;
     ldomNode * lastBaseElement;
 
+    lString8 headStyleText;
+    int headStyleState;
 
 public:
+
+    /// return content of html/head/style element
+    lString8 getHeadStyleText() { return headStyleText; }
+
     ldomNode * getBaseElement() { return lastBaseElement; }
 
     lString16 convertId( lString16 id );
@@ -2227,6 +2253,8 @@ public:
     virtual void OnStart(LVFileFormatParser *)
     {
         insideTag = false;
+        headStyleText.clear();
+        headStyleState = 0;
     }
     /// called on parsing end
     virtual void OnStop()
@@ -2252,6 +2280,10 @@ public:
     /// called on text
     virtual void OnText( const lChar16 * text, int len, lUInt32 flags )
     {
+        if (headStyleState == 1) {
+            headStyleText << UnicodeToUtf8(lString16(text));
+            return;
+        }
         if ( insideTag )
             parent->OnText( text, len, flags );
     }
@@ -2262,7 +2294,7 @@ public:
     /// constructor
     ldomDocumentFragmentWriter( LVXMLParserCallback * parentWriter, lString16 baseTagName, lString16 baseTagReplacementName, lString16 fragmentFilePath )
     : parent(parentWriter), baseTag(baseTagName), baseTagReplacement(baseTagReplacementName),
-    insideTag(false), styleDetectionState(0), pathSubstitutions(100), baseElement(NULL), lastBaseElement(NULL)
+    insideTag(false), styleDetectionState(0), pathSubstitutions(100), baseElement(NULL), lastBaseElement(NULL), headStyleState(0)
     {
         setCodeBase( fragmentFilePath );
     }

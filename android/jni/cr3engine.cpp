@@ -16,6 +16,7 @@
 #include "docview.h"
 #include "crengine.h"
 #include "epubfmt.h"
+#include "pdbfmt.h"
 #include "lvstream.h"
 
 
@@ -26,6 +27,15 @@
 #include <sys/stat.h>
 
 
+#ifdef _DEBUG
+// missing in system ZLIB with DEBUG option turned off
+int z_verbose=0;
+extern "C" void z_error(char * msg);
+void z_error(char * msg) {
+	fprintf(stderr, "%s\n", msg);
+	exit(1);
+}
+#endif
 /// returns current time representation string
 static lString16 getDateTimeString( time_t t )
 {
@@ -107,8 +117,8 @@ static bool GetEPUBBookProperties(const char *name, LVStreamRef stream, BookProp
         t = fs.st_mtime;
     }
 
-    lString16 author = doc->textFromXPath( lString16(L"package/metadata/creator"));
-    lString16 title = doc->textFromXPath( lString16(L"package/metadata/title"));
+    lString16 author = doc->textFromXPath( lString16(L"package/metadata/creator")).trim();
+    lString16 title = doc->textFromXPath( lString16(L"package/metadata/title")).trim();
 
     pBookProps->author = author;
     pBookProps->title = title;
@@ -120,9 +130,9 @@ static bool GetEPUBBookProperties(const char *name, LVStreamRef stream, BookProp
         lString16 name = item->getAttributeValue(L"name");
         lString16 content = item->getAttributeValue(L"content");
         if ( name==L"calibre:series" )
-        	pBookProps->series = content;
+        	pBookProps->series = content.trim();
         else if ( name==L"calibre:series_index" )
-        	pBookProps->seriesNumber = content.atoi();
+        	pBookProps->seriesNumber = content.trim().atoi();
     }
 
     pBookProps->filesize = (long)stream->GetSize();
@@ -260,6 +270,49 @@ JNIEXPORT jboolean JNICALL Java_org_coolreader_crengine_Engine_scanBookPropertie
 	SET_INT_FLD("seriesNumber",props.seriesNumber);
 	
 	return JNI_TRUE;
+}
+
+/*
+ * Class:     org_coolreader_crengine_Engine
+ * Method:    scanBookCoverInternal
+ * Signature: (Ljava/lang/String;)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_org_coolreader_crengine_Engine_scanBookCoverInternal
+  (JNIEnv * _env, jobject _engine, jstring _path) {
+	CRJNIEnv env(_env);
+	lString16 path = env.fromJavaString(_path);
+	CRLog::debug("scanBookCoverInternal(%s) called", LCSTR(path));
+	lString16 arcname, item;
+    LVStreamRef res;
+    jbyteArray array = NULL;
+    LVContainerRef arc;
+	if (!LVSplitArcName(path, arcname, item)) {
+		// not in archive
+		LVStreamRef stream = LVOpenFileStream(path.c_str(), LVOM_READ);
+		if (!stream.isNull()) {
+			arc = LVOpenArchieve(stream);
+			if (!arc.isNull()) {
+				// ZIP-based format
+				if (DetectEpubFormat(stream)) {
+					// EPUB
+					// extract coverpage from epub
+					res = GetEpubCoverpage(arc);
+				}
+			} else {
+				doc_format_t fmt;
+				if (DetectPDBFormat(stream, fmt)) {
+					res = GetPDBCoverpage(stream);
+				}
+			}
+		}
+	}
+	if (!res.isNull())
+		array = env.streamToJByteArray(res);
+    if (array != NULL)
+    	CRLog::debug("scanBookCoverInternal() : returned cover page array");
+    else
+    	CRLog::debug("scanBookCoverInternal() : cover page data not found");
+    return array;
 }
 
 /*
@@ -483,6 +536,24 @@ JNIEXPORT void JNICALL Java_org_coolreader_crengine_Engine_suspendLongOperationI
 	_timeoutControl.cancel();
 }
 
+
+#define BUTTON_BACKLIGHT_CONTROL_PATH "/sys/class/leds/button-backlight/brightness"
+/*
+ * Class:     org_coolreader_crengine_Engine
+ * Method:    setKeyBacklightInternal
+ * Signature: (I)Z
+ */
+JNIEXPORT jboolean JNICALL Java_org_coolreader_crengine_Engine_setKeyBacklightInternal
+  (JNIEnv *, jobject, jint n)
+{
+	FILE * f = fopen(BUTTON_BACKLIGHT_CONTROL_PATH, "wb");
+	if (!f)
+		return JNI_FALSE;
+	fwrite(n ? "1" : "0", 1, 1, f);
+	fclose(f);
+	return JNI_TRUE;
+}
+
 //=====================================================================
 
 static JNINativeMethod sEngineMethods[] = {
@@ -496,6 +567,8 @@ static JNINativeMethod sEngineMethods[] = {
   {"getArchiveItemsInternal", "(Ljava/lang/String;)[Ljava/lang/String;", (void*)Java_org_coolreader_crengine_Engine_getArchiveItemsInternal},
   {"isLink", "(Ljava/lang/String;)Z", (void*)JNICALL Java_org_coolreader_crengine_Engine_isLink},
   {"suspendLongOperationInternal", "()V", (void*)Java_org_coolreader_crengine_Engine_suspendLongOperationInternal},
+  {"setKeyBacklightInternal", "(I)Z", (void*)Java_org_coolreader_crengine_Engine_setKeyBacklightInternal},
+  {"scanBookCoverInternal", "(Ljava/lang/String;)[B", (void*)Java_org_coolreader_crengine_Engine_scanBookCoverInternal},
 };
 
 
@@ -530,6 +603,7 @@ static JNINativeMethod sDocViewMethods[] = {
   {"closeImageInternal", "()Z", (void*)Java_org_coolreader_crengine_DocView_closeImageInternal},
   {"hilightBookmarksInternal", "([Lorg/coolreader/crengine/Bookmark;)V", (void*)Java_org_coolreader_crengine_DocView_hilightBookmarksInternal},
   {"checkBookmarkInternal", "(IILorg/coolreader/crengine/Bookmark;)Z", (void*)Java_org_coolreader_crengine_DocView_checkBookmarkInternal},
+  {"isRenderedInternal", "()Z", (void*)Java_org_coolreader_crengine_DocView_isRenderedInternal},
 };
 
 /*

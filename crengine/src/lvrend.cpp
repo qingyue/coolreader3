@@ -829,7 +829,7 @@ int LVRendGetFontEmbolden()
     return rend_font_embolden;
 }
 
-LVFontRef getFont( css_style_rec_t * style )
+LVFontRef getFont(css_style_rec_t * style, int documentId)
 {
     int sz = style->font_size.value;
     if ( style->font_size.type != css_val_px && style->font_size.type != css_val_percent )
@@ -851,7 +851,8 @@ LVFontRef getFont( css_style_rec_t * style )
         fw,
         style->font_style==css_fs_italic,
         style->font_family,
-        lString8(style->font_name.c_str()) );
+        lString8(style->font_name.c_str()),
+        documentId);
     //fnt = LVCreateFontTransform( fnt, LVFONT_TRANSFORM_EMBOLDEN );
     return fnt;
 }
@@ -1175,7 +1176,29 @@ void renderFinalBlock( ldomNode * enode, LFormattedText * txform, RenderRectAcce
         //***********************************
         baseflags = f; // to allow blocks in one level with inlines
         if ( enode->getNodeId()==el_br ) {
-            baseflags |= LTEXT_ALIGN_LEFT;
+            // use the same alignment
+            //baseflags |= LTEXT_ALIGN_LEFT;
+            switch (style->text_align) {
+            case css_ta_left:
+                baseflags |= LTEXT_ALIGN_LEFT;
+                break;
+            case css_ta_right:
+                baseflags |= LTEXT_ALIGN_RIGHT;
+                break;
+            case css_ta_center:
+                baseflags |= LTEXT_ALIGN_CENTER;
+                break;
+            case css_ta_justify:
+                baseflags |= LTEXT_ALIGN_WIDTH;
+                ident = 0;
+                break;
+            case css_ta_inherit:
+                break;
+            }
+//            baseflags &= ~LTEXT_FLAG_NEWLINE; // clear newline flag
+//            LVFont * font = enode->getFont().get();
+//            txform->AddSourceLine( L"\n", 1, 0, 0, font, baseflags | LTEXT_FLAG_OWNTEXT,
+//                line_h, 0, enode, 0, 0 );
         } else {
             baseflags &= ~LTEXT_FLAG_NEWLINE; // clear newline flag
         }
@@ -1534,7 +1557,7 @@ int renderBlockElement( LVRendPageContext & context, ldomNode * enode, int x, in
             if ( context.getPageList() != NULL ) {
 
                 css_page_break_t before, inside, after;
-                before = inside = after = css_pb_auto;
+                //before = inside = after = css_pb_auto;
                 before = getPageBreakBefore( enode );
                 after = getPageBreakAfter( enode );
                 inside = getPageBreakInside( enode );

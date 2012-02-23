@@ -55,7 +55,7 @@ public class ColorPickerDialog extends BaseDialog implements OnSeekBarChangeList
 	private GradientDrawable mPreviewDrawable;
 
 	public ColorPickerDialog(CoolReader activity, OnColorChangedListener listener, int color, String title) {
-		super(activity, R.string.dlg_button_ok, R.string.dlg_button_cancel, true);
+		super(activity, title, false, true);
 		mListener = listener;
 
 		Resources res = activity.getResources();
@@ -170,6 +170,17 @@ public class ColorPickerDialog extends BaseDialog implements OnSeekBarChangeList
 		mListener.colorChanged(mColor);
 		super.onPositiveButtonClick();
 	}
+
+	@Override
+	protected void onNegativeButtonClick() {
+		mListener.colorChanged(mColor);
+		super.onPositiveButtonClick();
+	}
+
+//	@Override
+//	protected void onNegativeButtonClick() {
+//		onPositiveButtonClick();
+//	}
 
 	static class IconPreviewDrawable extends Drawable {
 		private Bitmap mBitmap;

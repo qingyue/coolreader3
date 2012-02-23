@@ -54,14 +54,19 @@ public class BookInfo {
 		return lastPosition;
 	}
 	
-	synchronized public void setLastPosition( Bookmark position )
+	public void setLastPosition( Bookmark position )
 	{
-		if ( lastPosition!=null )
-			position.setId(lastPosition.getId());
-		lastPosition = position;
-		lastPosition.setModified(true);
-		fileInfo.lastAccessTime = lastPosition.getTimeStamp();
-		fileInfo.setModified(true);
+		synchronized (this) {
+			if ( lastPosition!=null ) {
+				if (position.getStartPos()!=null && position.getStartPos().equals(lastPosition.getStartPos()))
+					return; // not changed
+				position.setId(lastPosition.getId());
+			}
+			lastPosition = position;
+			lastPosition.setModified(true);
+			fileInfo.lastAccessTime = lastPosition.getTimeStamp();
+			fileInfo.setModified(true);
+		}
 	}
 	
 	public FileInfo getFileInfo()
@@ -111,7 +116,7 @@ public class BookInfo {
 					break;
 				}
 				if (bm.getEndPos()!=null && bm.getEndPos().equals(item.getEndPos())) {
-					if (item.getId() != null && bm.getId() != null && bm.getId() != item.getId())
+					if (item.getId() != null && bm.getId() != null && !bm.getId().equals(item.getId()))
 						continue; // another bookmark with same pos
 					index = i;
 					break;

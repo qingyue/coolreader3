@@ -65,6 +65,14 @@ JNIEXPORT jboolean JNICALL Java_org_coolreader_crengine_Engine_scanBookPropertie
 
 /*
  * Class:     org_coolreader_crengine_Engine
+ * Method:    scanBookCoverInternal
+ * Signature: (Ljava/lang/String;)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_org_coolreader_crengine_Engine_scanBookCoverInternal
+  (JNIEnv *, jobject, jstring);
+
+/*
+ * Class:     org_coolreader_crengine_Engine
  * Method:    setHyphenationMethod
  * Signature: (I[B)Z
  */
@@ -86,6 +94,16 @@ JNIEXPORT jboolean JNICALL Java_org_coolreader_crengine_Engine_isLink
  */
 JNIEXPORT void JNICALL Java_org_coolreader_crengine_Engine_suspendLongOperationInternal
   (JNIEnv *, jclass);
+
+/*
+ * Class:     org_coolreader_crengine_Engine
+ * Method:    setKeyBacklightInternal
+ * Signature: (I)Z
+ */
+JNIEXPORT jboolean JNICALL Java_org_coolreader_crengine_Engine_setKeyBacklightInternal
+  (JNIEnv *, jobject, jint);
+
+
 
 #ifdef __cplusplus
 }

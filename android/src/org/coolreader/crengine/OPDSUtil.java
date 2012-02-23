@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.text.ParseException;
@@ -123,10 +124,14 @@ xml:base="http://lib.ololo.cc/opds/">
 		public static String convertHref( URL baseURL, String href ) {
 			if ( href==null )
 				return href;
+			String port = "";
+			if (baseURL.getPort() != 80)
+				port = ":" + baseURL.getPort();
+			String hostPort = baseURL.getHost() + port;
 			if ( href.startsWith("/") )
-				return baseURL.getProtocol() + "://" + baseURL.getHost() + href;
+				return baseURL.getProtocol() + "://" + hostPort + href;
 			if ( !href.startsWith("http://") ) {
-				return baseURL.getProtocol() + "://" + baseURL.getHost() + dirPath(baseURL.getPath()) + "/" + href;
+				return baseURL.getProtocol() + "://" + hostPort + dirPath(baseURL.getPath()) + "/" + href;
 			}
 			return href;
 		}
@@ -200,11 +205,11 @@ xml:base="http://lib.ololo.cc/opds/">
 		private EntryInfo entryInfo = new EntryInfo(); 
 		private ArrayList<EntryInfo> entries = new ArrayList<EntryInfo>(); 
 		private Stack<String> elements = new Stack<String>();
-		private Attributes currentAttributes;
+		//private Attributes currentAttributes;
 		private AuthorInfo authorInfo;
 		private boolean insideFeed;
 		private boolean insideEntry;
-		private boolean singleEntry;
+		//private boolean singleEntry;
 		private int level = 0;
 		//2011-05-31T10:28:22+04:00
 		private static SimpleDateFormat tsFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ"); 
@@ -281,10 +286,10 @@ xml:base="http://lib.ololo.cc/opds/">
 						entryInfo.icon = s;
 				} else if ( "link".equals(currentElement) ) {
 					// rel, type, title, href
-					if ( !insideEntry )
-						docInfo.icon = s;
-					else
-						entryInfo.icon = s;
+//					if ( !insideEntry )
+//						docInfo.icon = s;
+//					else
+//						entryInfo.icon = s;
 				} else if ( "content".equals(currentElement) ) {
 					if ( insideEntry )
 						entryInfo.content = entryInfo.content + s;
@@ -322,7 +327,7 @@ xml:base="http://lib.ololo.cc/opds/">
 				localName = qName;
 			level++;
 			L.d(tab() + "<" + localName + ">");
-			currentAttributes = attributes;
+			//currentAttributes = attributes;
 			elements.push(localName);
 			//String currentElement = elements.peek();
 			if ( !insideFeed && "feed".equals(localName) ) {
@@ -330,7 +335,7 @@ xml:base="http://lib.ololo.cc/opds/">
 			} else if ( "entry".equals(localName) ) {
 				if ( !insideFeed ) {
 					insideFeed = true;
-					singleEntry = true;
+					//singleEntry = true;
 				}
 				insideEntry = true;
 				entryInfo = new EntryInfo();
@@ -355,7 +360,8 @@ xml:base="http://lib.ololo.cc/opds/">
 							entryInfo.links.add(link);
 							int priority = link.getPriority();
 							if ( link.type.startsWith("application/atom+xml") ) {
-								entryInfo.link = link;
+								if (entryInfo.link == null || !entryInfo.link.type.startsWith("application/atom+xml"))
+									entryInfo.link = link;
 							} else if (priority>0 && (entryInfo.link==null || entryInfo.link.getPriority()<priority)) {
 								entryInfo.link = link;
 							}
@@ -393,11 +399,13 @@ xml:base="http://lib.ololo.cc/opds/">
 				insideEntry = false;
 				entryInfo = null;
 			} else if ( "author".equals(localName) ) {
-				if ( authorInfo!=null && authorInfo.name!=null )
-					entryInfo.authors.add(authorInfo);
+				if (insideEntry) {
+					if ( authorInfo!=null && authorInfo.name!=null )
+						entryInfo.authors.add(authorInfo);
+				}
 				authorInfo = null;
 			} 
-			currentAttributes = null;
+			//currentAttributes = null;
 			if ( level>0 )
 				level--;
 		}
@@ -660,12 +668,12 @@ xml:base="http://lib.ololo.cc/opds/">
 			
 			boolean itemsLoadedPartially = false;
 			boolean loadNext = false;
-			HashSet<URL> visited = new HashSet<URL>();
+			HashSet<String> visited = new HashSet<String>();
 
 			do {
 			try {
 				setProgressMessage( url.toString(), -1 );
-				visited.add(url);
+				visited.add(url.toString());
 				long startTimeStamp = System.currentTimeMillis();
 				delayedProgress = coolReader.getEngine().showProgressDelayed(0, progressMessage, PROGRESS_DELAY_MILLIS); 
 				URLConnection conn = url.openConnection();
@@ -737,9 +745,14 @@ xml:base="http://lib.ololo.cc/opds/">
 					parseFeed( is );
 					itemsLoadedPartially = true;
 					if (handler.docInfo.nextLink!=null && handler.docInfo.nextLink.type.startsWith("application/atom+xml;profile=opds-catalog")) {
-						url = new URL(handler.docInfo.nextLink.href);
-						loadNext = !visited.contains(url);
-						L.d("continue with next part: " + url);
+						if (handler.entries.size() < MAX_OPDS_ITEMS) {
+							url = new URL(handler.docInfo.nextLink.href);
+							loadNext = !visited.contains(url.toString());
+							L.d("continue with next part: " + url);
+						} else {
+							L.d("max item count reached: " + handler.entries.size());
+							loadNext = false;
+						}
 					} else {
 						loadNext = false;
 					}
@@ -759,6 +772,7 @@ xml:base="http://lib.ololo.cc/opds/">
 				if ( progressShown )
 					coolReader.getEngine().hideProgress();
 				onError("Error occured while reading OPDS catalog");
+				break;
 			} finally {
 				if ( connection!=null )
 					try {
@@ -899,5 +913,6 @@ xml:base="http://lib.ololo.cc/opds/">
 		return buf.toString();
 	}
 	
-	public static final int PROGRESS_DELAY_MILLIS = 2000; 
+	public static final int PROGRESS_DELAY_MILLIS = 2000;
+	public static final int MAX_OPDS_ITEMS = 1000;
 }

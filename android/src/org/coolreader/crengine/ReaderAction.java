@@ -50,9 +50,10 @@ public class ReaderAction {
 	public final static ReaderAction PAGE_DOWN_10 = new ReaderAction("PAGE_DOWN_10", R.string.action_pagedown_10, ReaderCommand.DCMD_PAGEDOWN, 10 ).setCanRepeat();
 	public final static ReaderAction PAGE_UP = new ReaderAction("PAGE_UP", R.string.action_pageup, ReaderCommand.DCMD_PAGEUP, 1 ).setCanRepeat();
 	public final static ReaderAction PAGE_UP_10 = new ReaderAction("PAGE_UP_10", R.string.action_pageup_10, ReaderCommand.DCMD_PAGEUP, 10 ).setCanRepeat();
-	public final static ReaderAction ZOOM_IN = new ReaderAction("ZOOM_IN", R.string.action_zoom_in, ReaderCommand.DCMD_ZOOM_IN, 2 );
-	public final static ReaderAction ZOOM_OUT = new ReaderAction("ZOOM_OUT", R.string.action_zoom_out, ReaderCommand.DCMD_ZOOM_OUT, 2 );
+	public final static ReaderAction ZOOM_IN = new ReaderAction("ZOOM_IN", R.string.mi_font_size_increase, ReaderCommand.DCMD_ZOOM_IN, 1); //,  R.id.cr3_mi_font_size_increase 
+	public final static ReaderAction ZOOM_OUT = new ReaderAction("ZOOM_OUT", R.string.mi_font_size_decrease, ReaderCommand.DCMD_ZOOM_OUT, 1); //,  R.id.cr3_mi_font_size_decrease 
 	public final static ReaderAction DOCUMENT_STYLES = new ReaderAction("DOCUMENT_STYLES", R.string.action_toggle_document_styles, ReaderCommand.DCMD_TOGGLE_DOCUMENT_STYLES, 0, R.id.cr3_mi_toggle_document_styles );
+	public final static ReaderAction TEXT_AUTOFORMAT = new ReaderAction("TEXT_AUTOFORMAT", R.string.action_toggle_text_autoformat, ReaderCommand.DCMD_TOGGLE_TEXT_AUTOFORMAT, 0, R.id.cr3_mi_toggle_text_autoformat );
 	public final static ReaderAction BOOKMARKS = new ReaderAction("BOOKMARKS", R.string.action_bookmarks, ReaderCommand.DCMD_BOOKMARKS, 0, R.id.cr3_mi_bookmarks );
 	public final static ReaderAction ABOUT = new ReaderAction("ABOUT", R.string.dlg_about, ReaderCommand.DCMD_ABOUT, 0, R.id.cr3_mi_about );
 	public final static ReaderAction BOOK_INFO = new ReaderAction("BOOK_INFO", R.string.dlg_book_info, ReaderCommand.DCMD_BOOK_INFO, 0, R.id.cr3_mi_book_info );
@@ -67,6 +68,8 @@ public class ReaderAction {
 	public final static ReaderAction TOGGLE_DAY_NIGHT = new ReaderAction("TOGGLE_DAY_NIGHT", R.string.action_toggle_day_night, ReaderCommand.DCMD_TOGGLE_DAY_NIGHT_MODE, 0, R.id.cr3_mi_toggle_day_night );
 	public final static ReaderAction RECENT_BOOKS = new ReaderAction("RECENT_BOOKS", R.string.action_recent_books_list, ReaderCommand.DCMD_RECENT_BOOKS_LIST, R.id.book_recent_books );
 	public final static ReaderAction FILE_BROWSER = new ReaderAction("FILE_BROWSER", R.string.action_file_browser, ReaderCommand.DCMD_FILE_BROWSER, 0, R.id.cr3_mi_open_file );
+	public final static ReaderAction FONT_PREVIOUS = new ReaderAction("FONT_PREVIOUS", R.string.mi_font_previous, ReaderCommand.DCMD_FONT_PREVIOUS, 0); //, R.id.cr3_mi_font_previous 
+	public final static ReaderAction FONT_NEXT = new ReaderAction("FONT_NEXT", R.string.mi_font_next, ReaderCommand.DCMD_FONT_NEXT, 0); //, R.id.cr3_mi_font_next 	
 	public final static ReaderAction TOGGLE_TOUCH_SCREEN_LOCK = new ReaderAction("TOGGLE_TOUCH_SCREEN_LOCK", R.string.action_touch_screen_toggle_lock, ReaderCommand.DCMD_TOGGLE_TOUCH_SCREEN_LOCK, 0 ).dontAssignOnTap();
 	public final static ReaderAction TOGGLE_ORIENTATION = new ReaderAction("TOGGLE_ORIENTATION", R.string.action_toggle_screen_orientation, ReaderCommand.DCMD_TOGGLE_ORIENTATION, 0 );
 	public final static ReaderAction TOGGLE_FULLSCREEN = new ReaderAction("TOGGLE_FULLSCREEN", R.string.action_toggle_fullscreen, ReaderCommand.DCMD_TOGGLE_FULLSCREEN, 0 );
@@ -83,6 +86,9 @@ public class ReaderAction {
 	public final static ReaderAction AUTOSCROLL_SPEED_INCREASE = new ReaderAction("AUTOSCROLL_SPEED_INCREASE", R.string.action_autoscroll_speed_increase, ReaderCommand.DCMD_AUTOSCROLL_SPEED_INCREASE, 0);
 	public final static ReaderAction AUTOSCROLL_SPEED_DECREASE = new ReaderAction("AUTOSCROLL_SPEED_DECREASE", R.string.action_autoscroll_speed_decrease, ReaderCommand.DCMD_AUTOSCROLL_SPEED_DECREASE, 0);
 	public final static ReaderAction START_SELECTION = new ReaderAction("START_SELECTION", R.string.action_toggle_selection_mode, ReaderCommand.DCMD_START_SELECTION, 0);
+	public final static ReaderAction SWITCH_PROFILE = new ReaderAction("SWITCH_PROFILE", R.string.action_switch_settings_profile, ReaderCommand.DCMD_SWITCH_PROFILE, 0);
+	public final static ReaderAction NEXT_CHAPTER = new ReaderAction("NEXT_CHAPTER", R.string.action_chapter_next, ReaderCommand.DCMD_MOVE_BY_CHAPTER, 1);
+	public final static ReaderAction PREV_CHAPTER = new ReaderAction("PREV_CHAPTER", R.string.action_chapter_prev, ReaderCommand.DCMD_MOVE_BY_CHAPTER, -1);
 	public final static ReaderAction EXIT = new ReaderAction("EXIT", R.string.action_exit, ReaderCommand.DCMD_EXIT, 0, R.id.cr3_mi_exit );
 	
 	
@@ -94,6 +100,8 @@ public class ReaderAction {
 		PAGE_UP_10,
 		FIRST_PAGE,
 		LAST_PAGE,
+		NEXT_CHAPTER,
+		PREV_CHAPTER,
 		TOC,
 		GO_PAGE,
 		GO_PERCENT,
@@ -114,6 +122,8 @@ public class ReaderAction {
 		HOME_SCREEN,
 		ZOOM_IN,
 		ZOOM_OUT,
+		FONT_PREVIOUS,
+		FONT_NEXT,
 		DOCUMENT_STYLES,
 		ABOUT,
 		BOOK_INFO,
@@ -123,8 +133,10 @@ public class ReaderAction {
 		SHOW_DICTIONARY,
 		OPEN_PREVIOUS_BOOK,
 		TOGGLE_AUTOSCROLL,
-		AUTOSCROLL_SPEED_INCREASE,
-		AUTOSCROLL_SPEED_DECREASE,
+		SWITCH_PROFILE,
+		TEXT_AUTOFORMAT,
+//		AUTOSCROLL_SPEED_INCREASE,
+//		AUTOSCROLL_SPEED_DECREASE,
 	};
 
 	public boolean isNone() {

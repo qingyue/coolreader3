@@ -13,6 +13,7 @@ public interface Settings {
     public static final String PROP_BACKGROUND_COLOR        ="background.color.default";
     public static final String PROP_FONT_ANTIALIASING       ="font.antialiasing.mode";
     public static final String PROP_FONT_FACE               ="font.face.default";
+    public static final String PROP_FONT_HINTING            ="font.hinting.mode";
     public static final String PROP_FONT_GAMMA              ="font.gamma";
     public static final String PROP_FONT_GAMMA_DAY          ="font.gamma.day";
     public static final String PROP_FONT_GAMMA_NIGHT        ="font.gamma.night";
@@ -57,6 +58,11 @@ public interface Settings {
     public static final String PROP_HYPHENATION_DICT        ="crengine.hyphenation.dictionary.code"; // non-crengine
     public static final String PROP_AUTOSAVE_BOOKMARKS      ="crengine.autosave.bookmarks";
 
+    public static final String PROP_PROFILE_NUMBER          ="crengine.profile.number"; // current settings profile number
+    public static final String PROP_APP_SETTINGS_SHOW_ICONS ="app.settings.show.icons";
+    public static final String PROP_APP_KEY_BACKLIGHT_OFF   ="app.key.backlight.disabled";
+
+    
 	 // image scaling settings
 	 // mode: 0=disabled, 1=integer scaling factors, 2=free scaling
 	 // scale: 0=auto based on font size, 1=no zoom, 2=scale up to *2, 3=scale up to *3
@@ -94,6 +100,7 @@ public interface Settings {
     public static final String PROP_APP_BOOK_SORT_ORDER = "app.browser.sort.order";
     public static final String PROP_APP_DICTIONARY = "app.dictionary.current";
     public static final String PROP_APP_SELECTION_ACTION = "app.selection.action";
+    public static final String PROP_APP_MULTI_SELECTION_ACTION = "app.multiselection.action";
     public static final String PROP_APP_SELECTION_PERSIST = "app.selection.persist";
     public static final String PROP_APP_HIGHLIGHT_BOOKMARKS = "crengine.highlight.bookmarks";
     public static final String PROP_APP_FILE_BROWSER_HIDE_EMPTY_FOLDERS = "app.browser.hide.empty.folders";
@@ -105,12 +112,17 @@ public interface Settings {
 
     public static final String PROP_APP_VIEW_AUTOSCROLL_SPEED  ="app.view.autoscroll.speed";
     public static final String PROP_APP_VIEW_AUTOSCROLL_TYPE  ="app.view.autoscroll.type";
+
+    public static final String PROP_APP_THEME  ="app.ui.theme";
+    public static final String PROP_APP_THEME_DAY  ="app.ui.theme.day";
+    public static final String PROP_APP_THEME_NIGHT  ="app.ui.theme.night";
     
     // available options for PROP_APP_SELECTION_ACTION setting
     public static final int SELECTION_ACTION_TOOLBAR = 0;
     public static final int SELECTION_ACTION_COPY = 1;
     public static final int SELECTION_ACTION_DICTIONARY = 2;
     public static final int SELECTION_ACTION_BOOKMARK = 3;
+    public static final int SELECTION_ACTION_FIND = 4;
     
     // available options for PROP_APP_SECONDARY_TAP_ACTION_TYPE setting
     public static final int TAP_ACTION_TYPE_LONGPRESS = 0;
@@ -121,4 +133,40 @@ public interface Settings {
     public static final int BACKLIGHT_CONTROL_FLICK_NONE = 0;
     public static final int BACKLIGHT_CONTROL_FLICK_LEFT = 1;
     public static final int BACKLIGHT_CONTROL_FLICK_RIGHT = 2;
+
+	public final static int MAX_PROFILES = 6;
+
+	// settings which depend on profile
+	public final static String[] PROFILE_SETTINGS = {
+	    "background.*",
+	    PROP_NIGHT_MODE,
+	    "font.*",
+	    "crengine.page.*",
+	    PROP_FONT_SIZE,
+	    PROP_FALLBACK_FONT_FACE,
+	    PROP_INTERLINE_SPACE,
+	    PROP_STATUS_LINE,
+	    PROP_FOOTNOTES,
+	    "window.status.*",
+	    PROP_FLOATING_PUNCTUATION,
+	    PROP_LANDSCAPE_PAGES,
+	    PROP_HYPHENATION_DICT,
+	    "crengine.image.*",
+	    PROP_FORMAT_MIN_SPACE_CONDENSING_PERCENT,
+	    PROP_APP_FULLSCREEN,
+	    "app.screen.*",
+	    PROP_APP_DICTIONARY,
+	    PROP_APP_SELECTION_ACTION,
+	    PROP_APP_SELECTION_PERSIST,
+	    PROP_APP_HIGHLIGHT_BOOKMARKS,
+
+	    PROP_APP_VIEW_AUTOSCROLL_SPEED,
+	    PROP_APP_VIEW_AUTOSCROLL_TYPE,
+	    
+	    "app.tapzone.*",
+	    PROP_APP_DOUBLE_TAP_SELECTION,
+
+	    "app.ui.theme*",
+	};
+	
 }

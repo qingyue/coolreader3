@@ -7,6 +7,8 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -23,6 +25,7 @@ import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.os.Environment;
 import android.util.Log;
+import android.view.View;
 
 /**
  * CoolReader Engine class.
@@ -372,39 +375,30 @@ public class Engine {
 					// show progress
 					//log.v("showProgress() - in GUI thread");
 					if (progressId != nextProgressId) {
-						//Log.v("cr3",
-						//		"showProgress() - skipping duplicate progress event");
+						//log.v("showProgress() - skipping duplicate progress event");
 						return;
 					}
 					if (mProgress == null) {
+						//log.v("showProgress() - creating progress window");
 						try {
 							if (mActivity != null && mActivity.isStarted()) {
-//								Log.v("cr3",
-//										"showProgress() - in GUI thread : creating progress window");
-								if (PROGRESS_STYLE == ProgressDialog.STYLE_HORIZONTAL) {
-									mProgress = new ProgressDialog(mActivity);
-									mProgress
-											.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-									if (progressIcon != null)
-										mProgress.setIcon(progressIcon);
-									else
-										mProgress.setIcon(R.drawable.cr3_logo);
-									mProgress.setMax(10000);
-									mProgress.setCancelable(false);
-									mProgress.setProgress(mainProgress);
-									mProgress
-											.setTitle(mActivity
-													.getResources()
-													.getString(
-															R.string.progress_please_wait));
-									mProgress.setMessage(msg);
-									mProgress.show();
-								} else {
-//									mProgress = ProgressDialog.show(mActivity,
-//											"Please Wait", msg);
-									mProgress.setCancelable(false);
-									mProgress.setProgress(mainProgress);
-								}
+								mProgress = new ProgressDialog(mActivity);
+								mProgress
+										.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+								if (progressIcon != null)
+									mProgress.setIcon(progressIcon);
+								else
+									mProgress.setIcon(R.drawable.cr3_logo);
+								mProgress.setMax(10000);
+								mProgress.setCancelable(false);
+								mProgress.setProgress(mainProgress);
+								mProgress
+										.setTitle(mActivity
+												.getResources()
+												.getString(
+														R.string.progress_please_wait));
+								mProgress.setMessage(msg);
+								mProgress.show();
 								progressShown = true;
 							}
 						} catch (Exception e) {
@@ -591,9 +585,13 @@ public class Engine {
 																		// pathname,
 																		// size
 
+	private native boolean setKeyBacklightInternal(int value);
+
 	private native boolean setCacheDirectoryInternal(String dir, int size);
 
 	private native boolean scanBookPropertiesInternal(FileInfo info);
+
+	private native byte[] scanBookCoverInternal(String path);
 
     private static native void suspendLongOperationInternal(); // cancel current long operation in engine thread (swapping to cache file) -- call it from GUI thread
     
@@ -619,7 +617,10 @@ public class Engine {
 
 	public ArrayList<ZipEntry> getArchiveItems(String zipFileName) {
 		final int itemsPerEntry = 2;
-		String[] in = getArchiveItemsInternal(zipFileName);
+		String[] in;
+		synchronized(this) {
+		    in = getArchiveItemsInternal(zipFileName);
+		}
 		ArrayList<ZipEntry> list = new ArrayList<ZipEntry>();
 		for (int i = 0; i <= in.length - itemsPerEntry; i += itemsPerEntry) {
 			ZipEntry e = new ZipEntry(in[i]);
@@ -644,6 +645,7 @@ public class Engine {
 		public final static HyphDict SWEDISH = new HyphDict("SWEDISH", HYPH_DICT, R.raw.swedish_hyphen, "Swedish"); 
 		public final static HyphDict POLISH = new HyphDict("POLISH", HYPH_DICT, R.raw.polish_hyphen, "Polish");
 		public final static HyphDict HUNGARIAN = new HyphDict("HUNGARIAN", HYPH_DICT, R.raw.hungarian_hyphen, "Hungarian");
+		public final static HyphDict GREEK = new HyphDict("GREEK", HYPH_DICT, R.raw.greek_hyphen, "Greek");
 		
 		public final String code;
 		public final int type;
@@ -748,16 +750,63 @@ public class Engine {
 	public boolean scanBookProperties(FileInfo info) {
 		if (!initialized)
 			throw new IllegalStateException("CREngine is not initialized");
-		return scanBookPropertiesInternal(info);
+		synchronized(this) {
+			long start = android.os.SystemClock.uptimeMillis();
+			boolean res = scanBookPropertiesInternal(info);
+			long duration = android.os.SystemClock.uptimeMillis() - start;
+			L.v("scanBookProperties took " + duration + " ms for " + info.getPathName());
+			return res;
+		}
+	}
+
+	public byte[] scanBookCover(String path) {
+		synchronized(this) {
+			long start = android.os.SystemClock.uptimeMillis();
+			byte[] res = scanBookCoverInternal(path);
+			long duration = android.os.SystemClock.uptimeMillis() - start;
+			L.v("scanBookCover took " + duration + " ms for " + path);
+			return res;
+		}
 	}
 
 	public String[] getFontFaceList() {
 		if (!initialized)
 			throw new IllegalStateException("CREngine is not initialized");
-		return getFontFaceListInternal();
+		synchronized(this) {
+			return getFontFaceListInternal();
+		}
 	}
 
-	final int CACHE_DIR_SIZE = 32000000;
+	private final static int SYSTEM_UI_FLAG_LOW_PROFILE = 1;
+	private final static int SYSTEM_UI_FLAG_VISIBLE = 0;
+	public boolean setKeyBacklight(int value) {
+		// Try ICS way
+		if (DeviceInfo.getSDKLevel() >= DeviceInfo.ICE_CREAM_SANDWICH) {
+			View view = mActivity.getReaderView();
+			Method m;
+			try {
+				m = view.getClass().getMethod("setSystemUiVisibility", int.class);
+				m.invoke(view, value == 0 ? SYSTEM_UI_FLAG_LOW_PROFILE :
+					SYSTEM_UI_FLAG_VISIBLE);
+			} catch (SecurityException e) {
+				// ignore
+			} catch (NoSuchMethodException e) {
+				// ignore
+			} catch (IllegalArgumentException e) {
+				// ignore
+			} catch (IllegalAccessException e) {
+				// ignore
+			} catch (InvocationTargetException e) {
+				// ignore
+			}
+			return true;
+		}
+
+		// thread safe
+		return setKeyBacklightInternal(value);
+	}
+	
+	final static int CACHE_DIR_SIZE = 32000000;
 
 	private String createCacheDir(File baseDir, String subDir) {
 		String cacheDirName = null;
@@ -800,11 +849,13 @@ public class Engine {
 			log.e("File " + oldPlace.getAbsolutePath() + " does not exist!");
 			return false;
 		}
+		FileOutputStream os = null;
+		FileInputStream is = null;
 		try {
 			if ( !newPlace.createNewFile() )
 				return false; // cannot create file
-			FileOutputStream os = new FileOutputStream(newPlace);
-			FileInputStream is = new FileInputStream(oldPlace);
+			os = new FileOutputStream(newPlace);
+			is = new FileInputStream(oldPlace);
 			byte[] buf = new byte[0x10000];
 			for (;;) {
 				int bytesRead = is.read(buf);
@@ -818,6 +869,18 @@ public class Engine {
 		} catch ( IOException e ) {
 			return false;
 		} finally {
+			try {
+				if (os != null)
+					os.close();
+			} catch (IOException ee) {
+				// ignore
+			}
+			try {
+				if (is != null)
+					is.close();
+			} catch (IOException ee) {
+				// ignore
+			}
 			if ( removeNewFile )
 				newPlace.delete();
 		}
@@ -882,7 +945,9 @@ public class Engine {
 		if (cacheDirName != null) {
 			log.i(cacheDirName
 					+ " will be used for cache, maxCacheSize=" + CACHE_DIR_SIZE);
-			setCacheDirectoryInternal(cacheDirName, CACHE_DIR_SIZE);
+			synchronized(this) {
+				setCacheDirectoryInternal(cacheDirName, CACHE_DIR_SIZE);
+			}
 		}
 	}
 
@@ -964,6 +1029,8 @@ public class Engine {
 		addMountRoot(map, "/mnt/extsd", "External SD /mnt/extsd");
 		// external SD
 		addMountRoot(map, "/mnt/external1", "External SD /mnt/external1");
+		// external SD
+		addMountRoot(map, "/mnt/sdcard2", "External SD /mnt/sdcard2");
 		// external SD / Galaxy S
 		addMountRoot(map, "/mnt/ext.sd", "External SD /mnt/ext.sd");
 		addMountRoot(map, "/ext.sd", "External SD /ext.sd");
@@ -989,8 +1056,10 @@ public class Engine {
 			throw new IllegalStateException("Already initialized");
 		String[] fonts = findFonts();
 		findExternalHyphDictionaries();
-		if (!initInternal(fonts))
-			throw new IOException("Cannot initialize CREngine JNI");
+		synchronized(this) {
+			if (!initInternal(fonts))
+				throw new IOException("Cannot initialize CREngine JNI");
+		}
 		// Initialization of cache directory
 		initCacheDirectory();
 		initialized = true;
@@ -1015,7 +1084,9 @@ public class Engine {
 			public void run() {
 				log.i("Engine.uninit() : in background thread");
 				if (initialized) {
-					uninitInternal();
+					synchronized(this) {
+						uninitInternal();
+					}
 					initialized = false;
 				}
 			}

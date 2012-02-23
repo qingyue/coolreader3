@@ -52,9 +52,15 @@ static const char * styleNames[] = {
     "title",
     "subtitle",
     "pre",
+    "link",
     "cite",
     "epigraph",
     "poem",
+    "text-author",
+    "footnote-link",
+    "footnote",
+    "footnote-title",
+    "annotation",
     NULL
 };
 
@@ -77,7 +83,9 @@ SettingsDlg::SettingsDlg(QWidget *parent, CR3View * docView ) :
 #else
     QString homeDir = QDir::toNativeSeparators(QDir::homePath() + "/cr3/");
 #endif
-#ifdef _LINUX
+#if MAC==1
+    QString exeDir = QDir::toNativeSeparators(qApp->applicationDirPath() + "/../Resources/"); //QDir::separator();
+#elif _LINUX
     QString exeDir = QString(CR3_DATA_DIR);
 #else
     QString exeDir = QDir::toNativeSeparators(qApp->applicationDirPath() + "/"); //QDir::separator();
@@ -144,6 +152,9 @@ SettingsDlg::SettingsDlg(QWidget *parent, CR3View * docView ) :
         m_ui->cbViewMode->setCurrentIndex( 2 );
     else
         m_ui->cbViewMode->setCurrentIndex( lp==1 ? 0 : 1 );
+    int hinting = m_props->getIntDef(PROP_FONT_HINTING, 2);
+    m_ui->cbFontHinting->setCurrentIndex(hinting);
+
 
     int n = m_props->getIntDef( PROP_PAGE_MARGIN_LEFT, 8 );
     int mi = 0;
@@ -171,6 +182,7 @@ SettingsDlg::SettingsDlg(QWidget *parent, CR3View * docView ) :
     crGetFontFaceList( m_faceList );
     m_ui->cbTextFontFace->addItems( m_faceList );
     m_ui->cbTitleFontFace->addItems( m_faceList );
+    m_ui->cbFallbackFontFace->addItems( m_faceList );
     QStringList sizeList;
     LVArray<int> sizes( cr_font_sizes, sizeof(cr_font_sizes)/sizeof(int) );
     for ( int i=0; i<sizes.length(); i++ )
@@ -195,6 +207,7 @@ SettingsDlg::SettingsDlg(QWidget *parent, CR3View * docView ) :
 
     fontToUi( PROP_FONT_FACE, PROP_FONT_SIZE, m_ui->cbTextFontFace, m_ui->cbTextFontSize, defFontFace );
     fontToUi( PROP_STATUS_FONT_FACE, PROP_STATUS_FONT_SIZE, m_ui->cbTitleFontFace, m_ui->cbTitleFontSize, defFontFace );
+    fontToUi( PROP_FALLBACK_FONT_FACE, PROP_FALLBACK_FONT_FACE, m_ui->cbFallbackFontFace, NULL, defFontFace );
 
 //		{_("90%"), "90"},
 //		{_("100%"), "100"},
@@ -215,7 +228,7 @@ SettingsDlg::SettingsDlg(QWidget *parent, CR3View * docView ) :
     v = m_props->getStringDef(PROP_HYPHENATION_DICT,"@algorithm"); //HYPH_DICT_ID_ALGORITHM;
     for ( int i=0; i<HyphMan::getDictList()->length(); i++ ) {
         HyphDictionary * item = HyphMan::getDictList()->get( i );
-        if ( v == cr2qt(item->getFilename() ) )
+        if (v == cr2qt(item->getFilename() ) ||  v == cr2qt(item->getId() ))
             hi = i;
         QString s = cr2qt( item->getTitle() );
         if ( item->getType()==HDT_NONE )
@@ -240,9 +253,15 @@ SettingsDlg::SettingsDlg(QWidget *parent, CR3View * docView ) :
     m_styleNames.append(tr("Title"));
     m_styleNames.append(tr("Subtitle"));
     m_styleNames.append(tr("Preformatted text"));
+    m_styleNames.append(tr("Link"));
     m_styleNames.append(tr("Cite / quotation"));
     m_styleNames.append(tr("Epigraph"));
     m_styleNames.append(tr("Poem"));
+    m_styleNames.append(tr("Text author"));
+    m_styleNames.append(tr("Footnote link"));
+    m_styleNames.append(tr("Footnote"));
+    m_styleNames.append(tr("Footnote title"));
+    m_styleNames.append(tr("Annotation"));
     m_ui->cbStyleName->clear();
     m_ui->cbStyleName->addItems(m_styleNames);
     m_ui->cbStyleName->setCurrentIndex(0);
@@ -308,7 +327,7 @@ void SettingsDlg::initStyleControls(const char * styleName) {
     };
 
     QString alignmentStyleNames[] = {
-        tr("[Inherited]"),
+        tr("-"),
         tr("Justify"),
         tr("Left"),
         tr("Center"),
@@ -327,7 +346,7 @@ void SettingsDlg::initStyleControls(const char * styleName) {
     };
 
     QString indentStyleNames[] = {
-        tr(""),
+        tr("-"),
         tr("No indent"),
         tr("Small Indent"),
         tr("Big Indent"),
@@ -360,7 +379,7 @@ void SettingsDlg::initStyleControls(const char * styleName) {
     };
 
     QString marginTopBottomStyleNames[] = {
-        tr(""),
+        tr("-"),
         tr("0"),
         tr("20% of line height"),
         tr("30% of line height"),
@@ -378,6 +397,7 @@ void SettingsDlg::initStyleControls(const char * styleName) {
         "margin-left: 2em",
         "margin-left: 4em",
         "margin-left: 10%",
+        "margin-left: 15%",
         "margin-left: 20%",
         "margin-left: 30%",
         NULL,
@@ -400,7 +420,7 @@ void SettingsDlg::initStyleControls(const char * styleName) {
     };
 
     QString marginLeftRightStyleNames[] = {
-        tr(""),
+        tr("-"),
         tr("0"),
         tr("50% of line height"),
         tr("100% of line height"),
@@ -429,7 +449,7 @@ void SettingsDlg::initStyleControls(const char * styleName) {
         NULL,
     };
     QString fontWeightStyleNames[] = {
-        tr(""),
+        tr("-"),
         tr("Normal"),
         tr("Bold"),
         tr("Bolder"),
@@ -449,7 +469,7 @@ void SettingsDlg::initStyleControls(const char * styleName) {
         NULL,
     };
     QString fontSizeStyleNames[] = {
-        tr(""),
+        tr("-"),
         tr("Increase: 110%"),
         tr("Increase: 120%"),
         tr("Increase: 150%"),
@@ -467,7 +487,7 @@ void SettingsDlg::initStyleControls(const char * styleName) {
         NULL,
     };
     QString fontStyleStyleNames[] = {
-        tr(""),
+        tr("-"),
         tr("Normal"),
         tr("Italic"),
     };
@@ -475,7 +495,7 @@ void SettingsDlg::initStyleControls(const char * styleName) {
 
     QStringList faces;
     QStringList faceValues;
-    faces.append("");
+    faces.append("-");
     faceValues.append("");
     faces.append(tr("[Default Sans Serif]"));
     faceValues.append("font-family: sans-serif");
@@ -511,7 +531,7 @@ void SettingsDlg::initStyleControls(const char * styleName) {
         NULL,
     };
     QString fontColorStyleNames[] = {
-        tr(""),
+        tr("-"),
         tr("Black"),
         tr("Green"),
         tr("Silver"),
@@ -530,6 +550,69 @@ void SettingsDlg::initStyleControls(const char * styleName) {
         tr("Aqua"),
     };
     m_styleFontColor.init(prefix + "color", NULL, fontColorStyles, fontColorStyleNames, false, m_props, m_ui->cbDefFontColor);
+
+    static const char * lineHeightStyles[] = {
+        "", // inherited
+        "line-height: 75%",
+        "line-height: 80%",
+        "line-height: 85%",
+        "line-height: 90%",
+        "line-height: 95%",
+        "line-height: 100%",
+        "line-height: 110%",
+        "line-height: 120%",
+        "line-height: 130%",
+        "line-height: 140%",
+        "line-height: 150%",
+        NULL,
+    };
+    QString lineHeightStyleNames[] = {
+        "-",
+        "75%",
+        "80%",
+        "85%",
+        "90%",
+        "95%",
+        "100%",
+        "110%",
+        "120%",
+        "130%",
+        "140%",
+        "150%",
+    };
+    m_styleLineHeight.init(prefix + "line-height", NULL, lineHeightStyles, lineHeightStyleNames, false, m_props, m_ui->cbDefLineHeight);
+
+    static const char * textDecorationStyles[] = {
+        "", // inherited
+        "text-decoration: none",
+        "text-decoration: underline",
+        "text-decoration: line-through",
+        "text-decoration: overline",
+        NULL,
+    };
+    QString textDecorationStyleNames[] = {
+        tr("-"),
+        tr("None"),
+        tr("Underline"),
+        tr("Line through"),
+        tr("Overline"),
+    };
+    m_styleTextDecoration.init(prefix + "text-decoration", NULL, textDecorationStyles, textDecorationStyleNames, false, m_props, m_ui->cbDefTextDecoration);
+
+    static const char * verticalAlignStyles[] = {
+        "", // inherited
+        "vertical-align: baseline",
+        "vertical-align: sub",
+        "vertical-align: super",
+        NULL,
+    };
+    QString verticalAlignStyleNames[] = {
+        tr("-"),
+        tr("Baseline"),
+        tr("Subscript"),
+        tr("Superscript"),
+    };
+    m_verticalAlignDecoration.init(prefix + "vertical-align", NULL, verticalAlignStyles, verticalAlignStyleNames, false, m_props, m_ui->cbDefVerticalAlign);
 
 }
 
@@ -754,13 +837,15 @@ void SettingsDlg::on_cbTextFontSize_currentIndexChanged(QString s)
 void SettingsDlg::fontToUi( const char * faceOptionName, const char * sizeOptionName, QComboBox * faceCombo, QComboBox * sizeCombo, const char * defFontFace )
 {
     QString faceName =  m_props->getStringDef( faceOptionName, defFontFace );
-    QString sizeName =  m_props->getStringDef( sizeOptionName, sizeCombo->itemText(4).toUtf8().data() );
     int faceIndex = faceCombo->findText( faceName );
     if ( faceIndex>=0 )
         faceCombo->setCurrentIndex( faceIndex );
-    int sizeIndex = sizeCombo->findText( sizeName );
-    if ( sizeIndex>=0 )
-        sizeCombo->setCurrentIndex( sizeIndex );
+    if (sizeCombo) {
+        QString sizeName =  m_props->getStringDef( sizeOptionName, sizeCombo->itemText(4).toUtf8().data() );
+        int sizeIndex = sizeCombo->findText( sizeName );
+        if ( sizeIndex>=0 )
+            sizeCombo->setCurrentIndex( sizeIndex );
+    }
 }
 
 void SettingsDlg::on_cbInterlineSpace_currentIndexChanged(int index)
@@ -872,4 +957,17 @@ void SettingsDlg::on_cbDefFontStyle_currentIndexChanged(int index)
 void SettingsDlg::on_cbDefFontColor_currentIndexChanged(int index)
 {
     m_styleFontColor.update(index);
+}
+
+void SettingsDlg::on_cbFontHinting_currentIndexChanged(int index)
+{
+    m_props->setInt(PROP_FONT_HINTING, index);
+}
+
+void SettingsDlg::on_cbFallbackFontFace_currentIndexChanged(const QString &s)
+{
+    if ( !initDone )
+        return;
+    m_props->setString(PROP_FALLBACK_FONT_FACE, s);
+    updateStyleSample();
 }
