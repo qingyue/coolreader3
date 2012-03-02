@@ -5,6 +5,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -18,9 +19,6 @@ import org.coolreader.R;
 import org.coolreader.crengine.Engine.HyphDict;
 import org.koekak.android.ebookdownloader.SonyBookSelector;
 
-import com.onyx.android.sdk.ui.util.ScreenUpdateManager;
-import com.onyx.android.sdk.ui.util.ScreenUpdateManager.UpdateMode;
-
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -29,6 +27,7 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.text.ClipboardManager;
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.GestureDetector.SimpleOnGestureListener;
 import android.view.KeyEvent;
@@ -36,8 +35,15 @@ import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
+import com.onyx.android.sdk.data.cms.OnyxCmsCenter;
+import com.onyx.android.sdk.data.cms.OnyxMetadata;
+import com.onyx.android.sdk.data.util.FileUtil;
+import com.onyx.android.sdk.ui.util.ScreenUpdateManager;
+import com.onyx.android.sdk.ui.util.ScreenUpdateManager.UpdateMode;
+
 public class ReaderView extends SurfaceView implements android.view.SurfaceHolder.Callback, Settings {
 
+    private static final String TAG = "ReaderView";
 	public static final Logger log = L.create("rv");
 
 	private DocView doc;
@@ -3067,6 +3073,64 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			fi = book.getFileInfo();
 			log.v("loadDocument() : item from history : " + fi);
 		}
+		
+		try {
+            OnyxMetadata data = new OnyxMetadata();
+            java.io.File file = new java.io.File(fi.getPathName());
+            
+            long time_point = System.currentTimeMillis();
+            String md5 = FileUtil.computeMD5(file);
+            long time_md5 = System.currentTimeMillis() - time_point;
+            Log.d(TAG, "times md5: " + time_md5);
+
+            data.setMD5(md5);
+            data.setName(file.getName());
+            data.setLocation(file.getAbsolutePath());
+            data.setNativeAbsolutePath(file.getAbsolutePath());
+            data.setSize(file.length());
+            data.setlastModified(file.lastModified());
+            
+            Context ctx = this.getContext();
+            if (OnyxCmsCenter.getMetadata(ctx, data)) {
+                data.setTitle(fi.getTitle());
+                if (fi.getAuthors() != null) {
+                    String[] fi_authors = fi.getAuthors().split("|");
+                    if (fi_authors != null) {
+                        ArrayList<String> authors = new ArrayList<String>();
+                        for (String a : fi_authors) {
+                            authors.add(a);
+                        }
+                        data.setAuthors(authors);
+                    }
+                }
+                
+                OnyxCmsCenter.updateMetadata(ctx, data);
+            }
+            else {
+                data.setTitle(fi.getTitle());
+                if (fi.getAuthors() != null) {
+                    String[] fi_authors = fi.getAuthors().split("|");
+                    if (fi_authors != null) {
+                        ArrayList<String> authors = new ArrayList<String>();
+                        for (String a : fi_authors) {
+                            authors.add(a);
+                        }
+                        data.setAuthors(authors);
+                    }
+                }
+                
+                OnyxCmsCenter.insertMetadata(ctx, data);
+            }
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            Log.w(TAG, "exception caught: ", e);
+            return false;
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.w(TAG, "exception caught: ", e);
+            return false;
+        } 
+		
 		return loadDocument(fi, errorHandler);
 	}
 	
