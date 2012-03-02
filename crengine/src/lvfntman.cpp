@@ -29,7 +29,7 @@
 // DEBUG ONLY
 #if 1
 #define USE_FREETYPE 1
-#define USE_FONTCONFIG 1
+#define USE_FONTCONFIG 0
 //#define DEBUG_FONT_SYNTHESIS 1
 //#define DEBUG_FONT_MAN 1
 //#define DEBUG_FONT_MAN_LOG_FILE "/tmp/font_man.log"
