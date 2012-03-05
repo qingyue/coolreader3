@@ -38,6 +38,7 @@ import android.view.SurfaceView;
 import com.onyx.android.sdk.data.cms.OnyxCmsCenter;
 import com.onyx.android.sdk.data.cms.OnyxMetadata;
 import com.onyx.android.sdk.data.util.FileUtil;
+import com.onyx.android.sdk.data.util.RefValue;
 import com.onyx.android.sdk.ui.util.ScreenUpdateManager;
 import com.onyx.android.sdk.ui.util.ScreenUpdateManager.UpdateMode;
 
@@ -3121,6 +3122,22 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
                 
                 OnyxCmsCenter.insertMetadata(ctx, data);
             }
+            
+            RefValue<Bitmap> result = new RefValue<Bitmap>();
+            if (!OnyxCmsCenter.getThumbnail(ctx, data, result)) {
+                BitmapDrawable b = this.mActivity.getHistory().getBookCoverpageImage(null, fi); 
+                Log.d(TAG, "cover not null: " + (b != null));
+                if (b != null) {
+                    if (!OnyxCmsCenter.insertThumbnail(ctx, data, b.getBitmap())) {
+                        Log.d(TAG, "insert thumbnail failed");
+                    }
+                    else {
+                        Log.d(TAG, "insert thumbnail successfully");
+                    }
+                }
+            }
+            
+            
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
             Log.w(TAG, "exception caught: ", e);
