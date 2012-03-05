@@ -3095,7 +3095,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
             if (OnyxCmsCenter.getMetadata(ctx, data)) {
                 data.setTitle(fi.getTitle());
                 if (fi.getAuthors() != null) {
-                    String[] fi_authors = fi.getAuthors().split("|");
+                    String[] fi_authors = fi.getAuthors().split("\\|");
                     if (fi_authors != null) {
                         ArrayList<String> authors = new ArrayList<String>();
                         for (String a : fi_authors) {
@@ -3110,7 +3110,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
             else {
                 data.setTitle(fi.getTitle());
                 if (fi.getAuthors() != null) {
-                    String[] fi_authors = fi.getAuthors().split("|");
+                    String[] fi_authors = fi.getAuthors().split("\\|");
                     if (fi_authors != null) {
                         ArrayList<String> authors = new ArrayList<String>();
                         for (String a : fi_authors) {
