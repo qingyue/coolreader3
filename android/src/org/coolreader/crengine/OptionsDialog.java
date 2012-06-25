@@ -432,8 +432,8 @@ public class OptionsDialog extends BaseDialog implements TabContentFactory, Opti
 					icon.setVisibility(View.INVISIBLE);
 				}
 			}
-//			view.setClickable(true);
-//			view.setFocusable(true);
+//          view.setClickable(true);
+//          view.setFocusable(true);
 			return view;
 		}
 	}
@@ -1795,6 +1795,12 @@ public class OptionsDialog extends BaseDialog implements TabContentFactory, Opti
 //				onNegativeButtonClick();
 //			}
 //		});
+
+		mOptionsApplication.setFocusable(true);
+		mOptionsControls.setFocusable(true);
+		mOptionsCSS.setFocusable(true);
+		mOptionsPage.setFocusable(true);
+		mOptionsStyles.setFocusable(true);
 		
 		super.onCreate(savedInstanceState);
 		L.v("OptionsDialog is created");
@@ -1849,10 +1855,10 @@ public class OptionsDialog extends BaseDialog implements TabContentFactory, Opti
 		super.onStop();
 	}
 
-	@Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (((OptionsListView)mTabs.getCurrentView()).onKeyDown(keyCode, event))
-        	return true;
-        return super.onKeyDown(keyCode, event);
-    }	
+//	@Override
+//    public boolean onKeyDown(int keyCode, KeyEvent event) {
+//        if (((OptionsListView)mTabs.getCurrentView()).onKeyDown(keyCode, event))
+//        	return true;
+//        return super.onKeyDown(keyCode, event);
+//    }	
 }

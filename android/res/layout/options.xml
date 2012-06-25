@@ -31,22 +31,18 @@
 	            android:layout_centerVertical="true"
                 android:layout_gravity="center_vertical|center_horizontal"
 	            android:src="@drawable/cr3_button_prev"
-	            android:focusable="false"
-	            android:focusableInTouchMode="false"
-	            android:background="@null"
 	            />
             <TabWidget
                 android:id="@android:id/tabs"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content" 
                 android:layout_toRightOf="@id/options_btn_back"
-                android:background="@null"
             />
         </LinearLayout>
         <FrameLayout
             android:id="@android:id/tabcontent"
             android:layout_width="fill_parent"
             android:layout_height="fill_parent"
-            android:padding="1dp" />
+            android:background="#ffffff" />
     </LinearLayout>
 </TabHost>
