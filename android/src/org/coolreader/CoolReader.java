@@ -1166,8 +1166,18 @@ public class CoolReader extends Activity
 	{
 		showView( view, true );
 	}
+
+	View mShowView = null;
 	public void showView( View view, boolean hideProgress )
 	{
+	    mShowView = view;
+	    if (view != null && (view instanceof ReaderView)) {
+            setFullscreen(true);
+        }
+	    else {
+            setFullscreen(false);
+        }
+
 		if ( mBackgroundThread==null )
 			return;
 		if ( hideProgress )
@@ -1471,9 +1481,9 @@ public class CoolReader extends Activity
 			return true;
 		case R.id.book_back_to_reading:
 			if ( isBookOpened() )
-				showReader();
+			    showReader();
 			else
-				showToast("No book opened");
+			    showToast("No book opened");
 			return true;
 		default:
 			return false;
@@ -2261,5 +2271,18 @@ public class CoolReader extends Activity
     private void logProductActivity(String product, String activity) {
     	// TODO: some logging
     	Log.i(LOG_TEXT_KEY, activity);
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus)
+    {
+        if (mShowView != null && (mShowView instanceof ReaderView)) {
+            if (hasFocus) {
+                setFullscreen(true);
+            }
+            else {
+                setFullscreen(false);
+            }
+        }
     }
 }
