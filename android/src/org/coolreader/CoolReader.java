@@ -2273,6 +2273,7 @@ public class CoolReader extends Activity
     	Log.i(LOG_TEXT_KEY, activity);
     }
 
+    //Set fullscreen
     @Override
     public void onWindowFocusChanged(boolean hasFocus)
     {
