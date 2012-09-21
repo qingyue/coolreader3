@@ -34,6 +34,7 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.widget.Toast;
 
 import com.onyx.android.sdk.data.cms.OnyxCmsCenter;
 import com.onyx.android.sdk.data.cms.OnyxMetadata;
@@ -180,6 +181,10 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
     	DCMD_START_SELECTION(2029),
     	DCMD_SWITCH_PROFILE(2030),
     	DCMD_TOGGLE_TEXT_AUTOFORMAT(2031),
+
+    	//qingyue add
+    	DCMD_INTERLINE_SPACE_INCREASE(302),
+    	DCMD_INTERLINE_SPACE_DECREASE(303),
     	;
     	
     	private final int nativeId;
@@ -2817,9 +2822,15 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 		case DCMD_TOGGLE_DAY_NIGHT_MODE:
 			toggleDayNightMode();
 			break;
+		case DCMD_INTERLINE_SPACE_INCREASE:
+		    switchInterlineSpace(1);
+		    break;
+		case DCMD_INTERLINE_SPACE_DECREASE:
+		    switchInterlineSpace(-1);
+		    break;
 		}
 	}
-	
+
 	public void doEngineCommand( final ReaderCommand cmd, final int param )
 	{
 		doEngineCommand( cmd, param, null );
@@ -5819,7 +5830,6 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
         });
 
         post(new CreateViewTask( props ));
-
     }
 	
 	private void switchFontFace(int direction) {
@@ -5841,5 +5851,33 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 		saveSetting(PROP_FONT_FACE, mFontFaces[index]);
         syncViewSettings(getSettings(), true);
 	}
+
+	/**
+	 * settings interline space
+	 * @param direction
+	 */
+	private void switchInterlineSpace(int direction) {
+	    String currentInterlineSpace = mSettings.getProperty(PROP_INTERLINE_SPACE);
+	    String[] interlineSpaces = mActivity.getResources().getStringArray(R.array.interline_space);
+
+        int index = 0;
+        int countInterlineSpaces = interlineSpaces.length;
+
+        for (int i = 0; i < countInterlineSpaces; i++) {
+            if (interlineSpaces[i].equals(currentInterlineSpace)) {
+                index = i;
+                break;
+            }
+        }
+        index += direction;
+        if (index < 0) {
+            index = countInterlineSpaces - 1;
+        }
+        else if (index >= countInterlineSpaces) {
+            index = 0;
+        }
+        saveSetting(PROP_INTERLINE_SPACE, String.valueOf(interlineSpaces[index]));
+        syncViewSettings(getSettings(), true);
+    }
 
 }

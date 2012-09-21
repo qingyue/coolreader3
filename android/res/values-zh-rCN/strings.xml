@@ -393,4 +393,8 @@
     <string name="mi_font_size_increase">Increase font size</string>
     <string name="mi_font_previous">Previous font</string>
     <string name="options_multi_selection_action">Multi Selection action</string>
+
+    <!-- qingyue add -->
+    <string name="interline_space_increase">增大行间距</string>
+    <string name="interline_space_decrease">缩小行间距</string>
 </resources>

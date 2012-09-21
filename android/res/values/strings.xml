@@ -395,4 +395,8 @@
     <string name="mi_donation">Donate</string>
     <string name="dlg_about_donation_inapp_purchase">Cool Reader is free and will always be free. If you want to support development of this project, you can make donation using Android Market in-app purchase:</string>
     <string name="dlg_about_donation_total">Total donations from you:</string>
+
+    <!-- qingyue add -->
+    <string name="interline_space_increase">interline space increase</string>
+    <string name="interline_space_decrease">interline space decrease</string>
 </resources>
