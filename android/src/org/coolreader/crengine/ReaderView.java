@@ -40,6 +40,13 @@ import com.onyx.android.sdk.data.cms.OnyxCmsCenter;
 import com.onyx.android.sdk.data.cms.OnyxMetadata;
 import com.onyx.android.sdk.data.util.FileUtil;
 import com.onyx.android.sdk.data.util.RefValue;
+import com.onyx.android.sdk.ui.dialog.DialogMenu;
+import com.onyx.android.sdk.ui.dialog.DialogMenu.onChangePageLinsener;
+import com.onyx.android.sdk.ui.dialog.DialogMenu.onDecreaseFontLinsener;
+import com.onyx.android.sdk.ui.dialog.DialogMenu.onIncreaseFontLinsener;
+import com.onyx.android.sdk.ui.dialog.DialogMenu.onOpenTOCLinsener;
+import com.onyx.android.sdk.ui.dialog.DialogMenu.onSearchContentLinsener;
+import com.onyx.android.sdk.ui.dialog.DialogMenu.onShowTTsViewLinsener;
 import com.onyx.android.sdk.ui.util.ScreenUpdateManager;
 import com.onyx.android.sdk.ui.util.ScreenUpdateManager.UpdateMode;
 
@@ -285,6 +292,8 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
     private BookInfo mBookInfo;
     
     private Properties mSettings = new Properties();
+
+    private DialogMenu mDialogMenu = null;
 
     public Engine getEngine()
     {
@@ -558,8 +567,8 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 //		if (currentTapHandler != null)
 //			currentTapHandler.cancel();
 
-		if (currentOnyxTapHandler != null) {
-		    currentOnyxTapHandler.cancel();
+		if (mCurrentOnyxTapHandler != null) {
+		    mCurrentOnyxTapHandler.cancel();
 		}
 	}
 
@@ -1525,14 +1534,16 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			}
 			return true;
 		}
+
+//		System.out.println("event.getX: "+event.getX()+", event.getY: "+event.getY());
 		
-		if (currentOnyxTapHandler == null)
-			currentOnyxTapHandler = new OnyxTapHandler();
-		currentOnyxTapHandler.checkExpiration();
-		return currentOnyxTapHandler.onTouchEvent(event);
+		if (mCurrentOnyxTapHandler == null)
+			mCurrentOnyxTapHandler = new OnyxTapHandler();
+		mCurrentOnyxTapHandler.checkExpiration();
+		return mCurrentOnyxTapHandler.onTouchEvent(event);
 	}
 
-	private OnyxTapHandler currentOnyxTapHandler = null;
+	private OnyxTapHandler mCurrentOnyxTapHandler = null;
 	public class OnyxTapHandler {
 
 	    private final static int STATE_INITIAL = 0; // no events yet
@@ -1590,7 +1601,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	        }
 	        state = STATE_DONE;
 	        unhiliteTapZone();
-	        currentOnyxTapHandler = new OnyxTapHandler();
+	        mCurrentOnyxTapHandler = new OnyxTapHandler();
 	        return true;
 	    }
 
@@ -1599,7 +1610,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	        log.d("performAction on touch: " + action);
 	        state = STATE_DONE;
 
-	        currentOnyxTapHandler = new OnyxTapHandler();
+	        mCurrentOnyxTapHandler = new OnyxTapHandler();
 
 	        if (!checkForLinks) {
 	            onAction(action);
@@ -1729,7 +1740,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	        BackgroundThread.instance().postGUI(new Runnable() {
 	            @Override
 	            public void run() {
-	                if (currentOnyxTapHandler == OnyxTapHandler.this && state == STATE_WAIT_FOR_DOUBLE_CLICK)
+	                if (mCurrentOnyxTapHandler == OnyxTapHandler.this && state == STATE_WAIT_FOR_DOUBLE_CLICK)
 	                    performAction(shortTapAction, false);
 	            }
 	        }, DOUBLE_CLICK_INTERVAL);
@@ -1740,7 +1751,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	        BackgroundThread.instance().postGUI(new Runnable() {
 	            @Override
 	            public void run() {
-	                if (currentOnyxTapHandler == OnyxTapHandler.this && state == STATE_DOWN_1) {
+	                if (mCurrentOnyxTapHandler == OnyxTapHandler.this && state == STATE_DOWN_1) {
 	                    if (longTapAction == ReaderAction.START_SELECTION)
 	                        startSelection();
 	                    else
@@ -1766,13 +1777,18 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	            width = getWidth();
 	            ReaderAction action = null;
 
+//	            System.out.println("x: "+x+", width: "+width);
+
 	            if ((x * 3) <= width) {
+	                System.out.println("===PAGE_UP===");
 	                action = ReaderAction.PAGE_UP;
 	            }
 	            else if (x <= ((width *2) / 3)) {
+	                System.out.println("===READER_MENU===");
 	                action = ReaderAction.READER_MENU;
 	            }
 	            else {
+	                System.out.println("===PAGE_DOWN===");
 	                action = ReaderAction.PAGE_DOWN;
 	            }
 	            state = STATE_DOWN_1;
@@ -2817,7 +2833,8 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			mActivity.showOptionsDialog();
 			break;
 		case DCMD_READER_MENU:
-			mActivity.openOptionsMenu();
+//			mActivity.openOptionsMenu();
+		    mDialogMenu.show();
 			break;
 		case DCMD_TOGGLE_DAY_NIGHT_MODE:
 			toggleDayNightMode();
@@ -5830,6 +5847,77 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
         });
 
         post(new CreateViewTask( props ));
+
+        mDialogMenu = new DialogMenu(activity);
+        mDialogMenu.setOnIncreaseFontLinsener(new onIncreaseFontLinsener()
+        {
+
+            @Override
+            public void IncreaseFont()
+            {
+                ReaderView.this.switchFontFace(1);
+            }
+        });
+        mDialogMenu.setOnDecreaseFontLinener(new onDecreaseFontLinsener()
+        {
+
+            @Override
+            public void DecreaseFont()
+            {
+                ReaderView.this.switchFontFace(-1);
+            }
+        });
+        mDialogMenu.setOnOpenTOCLinsener(new onOpenTOCLinsener()
+        {
+
+            @Override
+            public void OpenTOCLinsener()
+            {
+                ReaderView.this.showTOC();
+            }
+        });
+        mDialogMenu.setOnShowTTsViewLinsener(new onShowTTsViewLinsener()
+        {
+
+            @Override
+            public void showTTsView()
+            {
+                mDialogMenu.dismiss();
+
+                mActivity.initTTS(new TTS.OnTTSCreatedListener()
+                {
+
+                    @Override
+                    public void onCreated(TTS tts)
+                    {
+                        TTSToolbarDlg.showDialog(mActivity, ReaderView.this, tts);
+                    }
+                });
+            }
+        });
+        mDialogMenu.setOnSearchContentLinsener(new onSearchContentLinsener()
+        {
+
+            @Override
+            public void SearchContent()
+            {
+                ReaderView.this.showSearchDialog(null);
+            }
+        });
+        mDialogMenu.setOnChangePageLinsener(new onChangePageLinsener()
+        {
+
+            @Override
+            public void ChangePage(int i)
+            {
+                if (i == 1) {
+                    mCurrentOnyxTapHandler.performAction(ReaderAction.PAGE_DOWN, false);
+                }
+                else {
+                    mCurrentOnyxTapHandler.performAction(ReaderAction.PAGE_UP, false);
+                }
+            }
+        });
     }
 	
 	private void switchFontFace(int direction) {
