@@ -2112,6 +2112,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	{
 		int orientation = mActivity.getScreenOrientation();
 		orientation = ( orientation==0 )? 1 : 0;
+		System.out.println("orientation: "+orientation);
 		saveSetting(PROP_APP_SCREEN_ORIENTATION, String.valueOf(orientation));
 		mActivity.setScreenOrientation(orientation);
 	}
@@ -5873,53 +5874,52 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 
 	/**
 	 * @author qingyue
-	 * settings interline space
 	 * @param direction
+	 * settings interline space
 	 */
 	private void switchInterlineSpacing(int direction) {
 	    String currentInterlineSpace = mSettings.getProperty(PROP_INTERLINE_SPACE);
 	    String[] interlineSpaces = mActivity.getResources().getStringArray(R.array.interline_space);
 
-        int index = 0;
-        int countInterlineSpaces = interlineSpaces.length;
+	    int index = 0;
+	    int countInterlineSpaces = interlineSpaces.length;
 
-        for (int i = 0; i < countInterlineSpaces; i++) {
-            if (interlineSpaces[i].equals(currentInterlineSpace)) {
-                index = i;
-                break;
-            }
-        }
-        index += direction;
-        if (index < 0) {
-            index = countInterlineSpaces - 1;
-        }
-        else if (index >= countInterlineSpaces) {
-            index = 0;
-        }
-        saveSetting(PROP_INTERLINE_SPACE, String.valueOf(interlineSpaces[index]));
-        syncViewSettings(getSettings(), true);
-    }
+	    for (int i = 0; i < countInterlineSpaces; i++) {
+	        if (interlineSpaces[i].equals(currentInterlineSpace)) {
+	            index = i;
+	            break;
+	        }
+	    }
+	    index += direction;
+	    if (index < 0) {
+	        index = countInterlineSpaces - 1;
+	    }
+	    else if (index >= countInterlineSpaces) {
+	        index = 0;
+	    }
+	    saveSetting(PROP_INTERLINE_SPACE, String.valueOf(interlineSpaces[index]));
+	    syncViewSettings(getSettings(), true);
+	}
 
     /**
      * @author qingyue
      * @param property
-     * settings interline space
      */
-    private void switchInterlineSpacing(LineSpacingProperty property) {
-        int line_spacing = 0;
-        if (property == LineSpacingProperty.normal) {
-            line_spacing = 100;
-        }
-        else if (property == LineSpacingProperty.big) {
-            line_spacing = 130;
-        }
-        else if (property == LineSpacingProperty.small) {
-            line_spacing = 80;
-        }
+	private void switchInterlineSpacing(LineSpacingProperty property) {
+	    int line_spacing = 0;
+	    if (property == LineSpacingProperty.normal) {
+	        line_spacing = 100;
+	    }
+	    else if (property == LineSpacingProperty.big) {
+	        line_spacing = 130;
+	    }
+	    else if (property == LineSpacingProperty.small) {
+	        line_spacing = 80;
+	    }
 
-        saveSetting(PROP_INTERLINE_SPACE, String.valueOf(line_spacing));
-        syncViewSettings(getSettings(), true);
-    }
+	    saveSetting(PROP_INTERLINE_SPACE, String.valueOf(line_spacing));
+	    syncViewSettings(getSettings(), true);
+	}
 
     /**
      * @author qingyue
@@ -6042,10 +6042,10 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
                     toggleScreenOrientation(0);
                 }
                 else if (property == RotationScreenProperty.rotation_90) {
-//                    saveSetting(PROP_APP_SCREEN_ORIENTATION, String.valueOf(1));
+//                    toggleScreenOrientation(1);
                 }
                 else if (property == RotationScreenProperty.rotation_180) {
-//                    saveSetting(PROP_APP_SCREEN_ORIENTATION, String.valueOf(0));
+//                    toggleScreenOrientation(0);
                 }
                 else if (property == RotationScreenProperty.rotation_270) {
                     toggleScreenOrientation(1);
@@ -6089,5 +6089,6 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
         Properties settings = new Properties();
         settings.put(PROP_APP_SCREEN_ORIENTATION, String.valueOf(orientation));
         setSettings(settings, null, true, true);
+        mActivity.setScreenOrientation(orientation);
     }
 }
