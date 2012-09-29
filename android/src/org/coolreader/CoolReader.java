@@ -304,52 +304,47 @@ public class CoolReader extends Activity
 
 	public void setScreenOrientation( int angle )
 	{
-		int newOrientation = screenOrientation;
-		boolean level9 = DeviceInfo.getSDKLevel() >= 9;
-		switch (angle) {
-		case 0:
-			newOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT; // level9 ? ActivityInfo_SCREEN_ORIENTATION_SENSOR_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
-			break;
-		case 1:
-			newOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE; // level9 ? ActivityInfo_SCREEN_ORIENTATION_SENSOR_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
-			break;
-		case 2:
-			newOrientation = level9 ? ActivityInfo_SCREEN_ORIENTATION_REVERSE_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
-			break;
-		case 3:
-			newOrientation = level9 ? ActivityInfo_SCREEN_ORIENTATION_REVERSE_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
-			break;
-		case 4:
-			newOrientation = level9 ? ActivityInfo_SCREEN_ORIENTATION_FULL_SENSOR : ActivityInfo.SCREEN_ORIENTATION_SENSOR;
-			break;
-		}
-		if (newOrientation != screenOrientation) {
-			log.d("setScreenOrientation(" + angle + ")");
-			screenOrientation = newOrientation;
-			setRequestedOrientation(angle);
-			applyScreenOrientation(getWindow());
-		}
+//		int newOrientation = screenOrientation;
+//		boolean level9 = DeviceInfo.getSDKLevel() >= 9;
+//		switch (angle) {
+//		case 0:
+//			newOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT; // level9 ? ActivityInfo_SCREEN_ORIENTATION_SENSOR_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+//			break;
+//		case 1:
+//			newOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE; // level9 ? ActivityInfo_SCREEN_ORIENTATION_SENSOR_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
+//			break;
+//		case 2:
+//			newOrientation = level9 ? ActivityInfo_SCREEN_ORIENTATION_REVERSE_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+//			break;
+//		case 3:
+//			newOrientation = level9 ? ActivityInfo_SCREEN_ORIENTATION_REVERSE_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
+//			break;
+//		case 4:
+//			newOrientation = level9 ? ActivityInfo_SCREEN_ORIENTATION_FULL_SENSOR : ActivityInfo.SCREEN_ORIENTATION_SENSOR;
+//			break;
+//		}
+//		if (newOrientation != screenOrientation) {
+//			log.d("setScreenOrientation(" + angle + ")");
+//			screenOrientation = newOrientation;
+//			setRequestedOrientation(screenOrientation);
+//			applyScreenOrientation(getWindow());
+//		}
 
 	    /**
 	     * qingyue add
 	     */
-//	    System.out.println("angle: "+angle);
-//	    int newOrientation = screenOrientation;
-//	    if (angle == 0) {
-//	        newOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
-//	    }
-//	    else {
-//	        newOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
-//	    }
-//	    System.out.println("newOrientation: "+newOrientation+", screenOrientation: "+screenOrientation);
-//	    if (newOrientation != screenOrientation) {
-//	        screenOrientation = newOrientation;
-//	        setRequestedOrientation(angle);
-//	        applyScreenOrientation(getWindow());
-//	    }
-//	    screenOrientation = newOrientation;
-//	    setRequestedOrientation(angle);
-//	    applyScreenOrientation(getWindow());
+	    int newOrientation = screenOrientation;
+	    if (angle == 0) {
+	        newOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+	    }
+	    else {
+	        newOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
+	    }
+	    if (newOrientation != screenOrientation) {
+	        screenOrientation = newOrientation;
+	        setRequestedOrientation(screenOrientation);
+	        applyScreenOrientation(getWindow());
+	    }
 	}
 
 	private Runnable backlightTimerTask = null;

@@ -925,14 +925,12 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 		private void lockOrientation() {
 			oldOrientation = mActivity.getScreenOrientation();
 			if (oldOrientation == 4) {
-			    System.out.println("22222222222");
 			    mActivity.setScreenOrientation(mActivity.getOrientationFromSensor());
 			}
 		}
 
 		private void unlockOrientation() {
 			if (oldOrientation == 4) {
-			    System.out.println("33333333333333333333");
 			    mActivity.setScreenOrientation(oldOrientation);
 			}
 		}
@@ -1155,7 +1153,6 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 				mCurrentPageInfo = null;
 			}
 			PositionProperties currpos = doc.getPositionProps(null);
-			System.out.println("hhhhhhhhhhhhhhhhhhh");
 			BitmapInfo bi = new BitmapInfo();
 	        bi.imageInfo = new ImageInfo(img);
 			bi.bitmap = factory.get(internalDX, internalDY);
@@ -1546,8 +1543,6 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			return true;
 		}
 
-//		System.out.println("event.getX: "+event.getX()+", event.getY: "+event.getY());
-		
 		if (mCurrentOnyxTapHandler == null)
 			mCurrentOnyxTapHandler = new OnyxTapHandler();
 		mCurrentOnyxTapHandler.checkExpiration();
@@ -2116,11 +2111,8 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	public void toggleScreenOrientation()
 	{
 		int orientation = mActivity.getScreenOrientation();
-		System.out.println("orientation: "+orientation);
 		orientation = ( orientation==0 )? 1 : 0;
-		System.out.println("---->orientation: "+orientation);
 		saveSetting(PROP_APP_SCREEN_ORIENTATION, String.valueOf(orientation));
-		System.out.println("444444444444444444444444444");
 		mActivity.setScreenOrientation(orientation);
 	}
 	
@@ -2844,8 +2836,8 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			mActivity.showOptionsDialog();
 			break;
 		case DCMD_READER_MENU:
-			mActivity.openOptionsMenu();
-//		    showDialogMenu();
+//			mActivity.openOptionsMenu();
+		    showDialogMenu();
 			break;
 		case DCMD_TOGGLE_DAY_NIGHT_MODE:
 			toggleDayNightMode();
@@ -3057,7 +3049,6 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
         	} catch (NumberFormatException e) {
         		// ignore
         	}
-            System.out.println("1111111111111111111: "+orientation);
         	mActivity.setScreenOrientation(orientation);
         } else if (PROP_APP_VIEW_AUTOSCROLL_SPEED.equals(key)) {
         	int n = 1500;
@@ -3214,7 +3205,6 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
     				mSettings = currSettings;
     		}
     	});
-//        }
 	}
 
 	private void setBackgroundTexture( String textureId ) {
@@ -3662,7 +3652,6 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			return currentImageViewer.prepareImage();
 
 		PositionProperties currpos = doc.getPositionProps(null);
-		System.out.println("ddddddddddddddddddddd");
 		
 		boolean isPageView = currpos.pageMode!=0;
 		
@@ -5913,8 +5902,8 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 
     /**
      * @author qingyue
-     * settings interline space
      * @param property
+     * settings interline space
      */
     private void switchInterlineSpacing(LineSpacingProperty property) {
         int line_spacing = 0;
@@ -6053,10 +6042,10 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
                     toggleScreenOrientation(0);
                 }
                 else if (property == RotationScreenProperty.rotation_90) {
-//                    toggleScreenOrientation(1);
+//                    saveSetting(PROP_APP_SCREEN_ORIENTATION, String.valueOf(1));
                 }
                 else if (property == RotationScreenProperty.rotation_180) {
-//                    toggleScreenOrientation(0);
+//                    saveSetting(PROP_APP_SCREEN_ORIENTATION, String.valueOf(0));
                 }
                 else if (property == RotationScreenProperty.rotation_270) {
                     toggleScreenOrientation(1);
@@ -6097,8 +6086,8 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
      */
     private void toggleScreenOrientation(int orientation)
     {
-        saveSetting(PROP_APP_SCREEN_ORIENTATION, String.valueOf(orientation));
-        System.out.println("5555555555555555555555");
-//        mActivity.setScreenOrientation(orientation);
+        Properties settings = new Properties();
+        settings.put(PROP_APP_SCREEN_ORIENTATION, String.valueOf(orientation));
+        setSettings(settings, null, true, true);
     }
 }
