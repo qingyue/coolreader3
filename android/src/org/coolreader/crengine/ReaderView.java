@@ -34,18 +34,28 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.widget.Toast;
+import android.view.View;
 
 import com.onyx.android.sdk.data.cms.OnyxCmsCenter;
 import com.onyx.android.sdk.data.cms.OnyxMetadata;
 import com.onyx.android.sdk.data.util.FileUtil;
 import com.onyx.android.sdk.data.util.RefValue;
+import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings;
+import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings.onSettingsFontFaceListener;
 import com.onyx.android.sdk.ui.dialog.DialogMenu;
+import com.onyx.android.sdk.ui.dialog.DialogMenu.FontSizeProperty;
+import com.onyx.android.sdk.ui.dialog.DialogMenu.LineSpacingProperty;
+import com.onyx.android.sdk.ui.dialog.DialogMenu.RotationScreenProperty;
+import com.onyx.android.sdk.ui.dialog.DialogMenu.onChangeFontSizeLinsener;
 import com.onyx.android.sdk.ui.dialog.DialogMenu.onChangePageLinsener;
+import com.onyx.android.sdk.ui.dialog.DialogMenu.onChangeRotationScreenLinsener;
 import com.onyx.android.sdk.ui.dialog.DialogMenu.onDecreaseFontLinsener;
+import com.onyx.android.sdk.ui.dialog.DialogMenu.onDisplayCurrentFontFace;
 import com.onyx.android.sdk.ui.dialog.DialogMenu.onIncreaseFontLinsener;
 import com.onyx.android.sdk.ui.dialog.DialogMenu.onOpenTOCLinsener;
 import com.onyx.android.sdk.ui.dialog.DialogMenu.onSearchContentLinsener;
+import com.onyx.android.sdk.ui.dialog.DialogMenu.onSettingsFontFaceLinsener;
+import com.onyx.android.sdk.ui.dialog.DialogMenu.onSettingsLineSpacingLinsener;
 import com.onyx.android.sdk.ui.dialog.DialogMenu.onShowTTsViewLinsener;
 import com.onyx.android.sdk.ui.util.ScreenUpdateManager;
 import com.onyx.android.sdk.ui.util.ScreenUpdateManager.UpdateMode;
@@ -292,8 +302,6 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
     private BookInfo mBookInfo;
     
     private Properties mSettings = new Properties();
-
-    private DialogMenu mDialogMenu = null;
 
     public Engine getEngine()
     {
@@ -2109,6 +2117,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	{
 		int orientation = mActivity.getScreenOrientation();
 		orientation = ( orientation==0 )? 1 : 0;
+		System.out.println("orientation: "+orientation);
 		saveSetting(PROP_APP_SCREEN_ORIENTATION, String.valueOf(orientation));
 		mActivity.setScreenOrientation(orientation);
 	}
@@ -2834,16 +2843,16 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			break;
 		case DCMD_READER_MENU:
 //			mActivity.openOptionsMenu();
-		    mDialogMenu.show();
+		    showDialogMenu();
 			break;
 		case DCMD_TOGGLE_DAY_NIGHT_MODE:
 			toggleDayNightMode();
 			break;
 		case DCMD_INTERLINE_SPACE_INCREASE:
-		    switchInterlineSpace(1);
+		    switchInterlineSpacing(1);
 		    break;
 		case DCMD_INTERLINE_SPACE_DECREASE:
-		    switchInterlineSpace(-1);
+		    switchInterlineSpacing(-1);
 		    break;
 		}
 	}
@@ -5847,79 +5856,8 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
         });
 
         post(new CreateViewTask( props ));
-
-        mDialogMenu = new DialogMenu(activity);
-        mDialogMenu.setOnIncreaseFontLinsener(new onIncreaseFontLinsener()
-        {
-
-            @Override
-            public void IncreaseFont()
-            {
-                ReaderView.this.switchFontFace(1);
-            }
-        });
-        mDialogMenu.setOnDecreaseFontLinener(new onDecreaseFontLinsener()
-        {
-
-            @Override
-            public void DecreaseFont()
-            {
-                ReaderView.this.switchFontFace(-1);
-            }
-        });
-        mDialogMenu.setOnOpenTOCLinsener(new onOpenTOCLinsener()
-        {
-
-            @Override
-            public void OpenTOCLinsener()
-            {
-                ReaderView.this.showTOC();
-            }
-        });
-        mDialogMenu.setOnShowTTsViewLinsener(new onShowTTsViewLinsener()
-        {
-
-            @Override
-            public void showTTsView()
-            {
-                mDialogMenu.dismiss();
-
-                mActivity.initTTS(new TTS.OnTTSCreatedListener()
-                {
-
-                    @Override
-                    public void onCreated(TTS tts)
-                    {
-                        TTSToolbarDlg.showDialog(mActivity, ReaderView.this, tts);
-                    }
-                });
-            }
-        });
-        mDialogMenu.setOnSearchContentLinsener(new onSearchContentLinsener()
-        {
-
-            @Override
-            public void SearchContent()
-            {
-                ReaderView.this.showSearchDialog(null);
-            }
-        });
-        mDialogMenu.setOnChangePageLinsener(new onChangePageLinsener()
-        {
-
-            @Override
-            public void ChangePage(int i)
-            {
-                if (i == 1) {
-                    mCurrentOnyxTapHandler.performAction(ReaderAction.PAGE_DOWN, false);
-                }
-                else {
-                    mCurrentOnyxTapHandler.performAction(ReaderAction.PAGE_UP, false);
-                }
-            }
-        });
     }
-	
+
 	private void switchFontFace(int direction) {
 		String currentFontFace = mSettings.getProperty(PROP_FONT_FACE, "");
 		String[] mFontFaces = mEngine.getFontFaceList();
@@ -5944,7 +5882,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	 * settings interline space
 	 * @param direction
 	 */
-	private void switchInterlineSpace(int direction) {
+	private void switchInterlineSpacing(int direction) {
 	    String currentInterlineSpace = mSettings.getProperty(PROP_INTERLINE_SPACE);
 	    String[] interlineSpaces = mActivity.getResources().getStringArray(R.array.interline_space);
 
@@ -5968,4 +5906,187 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
         syncViewSettings(getSettings(), true);
     }
 
+    /**
+     * settings interline space
+     * @param property
+     */
+    private void switchInterlineSpacing(LineSpacingProperty property) {
+        int line_spacing = 0;
+        if (property == LineSpacingProperty.normal) {
+            line_spacing = 100;
+        }
+        else if (property == LineSpacingProperty.big) {
+            line_spacing = 130;
+        }
+        else if (property == LineSpacingProperty.small) {
+            line_spacing = 80;
+        }
+
+        saveSetting(PROP_INTERLINE_SPACE, String.valueOf(line_spacing));
+        syncViewSettings(getSettings(), true);
+    }
+
+    /**
+     * @author qingyue
+     */
+    private void showDialogMenu()
+    {
+        final DialogMenu dialog_menu = new DialogMenu(mActivity);
+        dialog_menu.setOnIncreaseFontLinsener(new onIncreaseFontLinsener()
+        {
+
+            @Override
+            public void IncreaseFont()
+            {
+                ReaderView.this.switchFontFace(1);
+            }
+        });
+        dialog_menu.setOnDecreaseFontLinener(new onDecreaseFontLinsener()
+        {
+
+            @Override
+            public void DecreaseFont()
+            {
+                ReaderView.this.switchFontFace(-1);
+            }
+        });
+        dialog_menu.setOnOpenTOCLinsener(new onOpenTOCLinsener()
+        {
+
+            @Override
+            public void OpenTOCLinsener()
+            {
+                ReaderView.this.showTOC();
+            }
+        });
+        dialog_menu.setOnShowTTsViewLinsener(new onShowTTsViewLinsener()
+        {
+
+            @Override
+            public void showTTsView()
+            {
+                dialog_menu.dismiss();
+
+                mActivity.initTTS(new TTS.OnTTSCreatedListener()
+                {
+
+                    @Override
+                    public void onCreated(TTS tts)
+                    {
+                        TTSToolbarDlg.showDialog(mActivity, ReaderView.this, tts);
+                    }
+                });
+            }
+        });
+        dialog_menu.setOnSearchContentLinsener(new onSearchContentLinsener()
+        {
+
+            @Override
+            public void SearchContent()
+            {
+                ReaderView.this.showSearchDialog(null);
+            }
+        });
+        dialog_menu.setOnChangePageLinsener(new onChangePageLinsener()
+        {
+
+            @Override
+            public void ChangePage(int i)
+            {
+                if (i == 1) {
+                    mCurrentOnyxTapHandler.performAction(ReaderAction.PAGE_DOWN, false);
+                }
+                else {
+                    mCurrentOnyxTapHandler.performAction(ReaderAction.PAGE_UP, false);
+                }
+            }
+        });
+        dialog_menu.setOnSettingsLineSpacingLinener(new onSettingsLineSpacingLinsener()
+        {
+
+            @Override
+            public void SettingsLineSpacing(LineSpacingProperty property)
+            {
+                switchInterlineSpacing(property);
+            }
+        });
+        dialog_menu.setOnChangeFontSizeLinsener(new onChangeFontSizeLinsener()
+        {
+
+            @Override
+            public void changeFontsize(FontSizeProperty property)
+            {
+                if (property == FontSizeProperty.decrease) {
+                    onAction(ReaderAction.ZOOM_OUT);
+                }
+                else if (property == FontSizeProperty.increase) {
+                    onAction(ReaderAction.ZOOM_IN);
+                }
+            }
+        });
+        dialog_menu.setOnChangeRotationScreenLinsener(new onChangeRotationScreenLinsener()
+        {
+
+            @Override
+            public void changeRotationScreen(RotationScreenProperty property)
+            {
+                if (property == RotationScreenProperty.rotation_0) {
+                    toggleScreenOrientation(0);
+                }
+                else if (property == RotationScreenProperty.rotation_90) {
+                    toggleScreenOrientation(1);
+                }
+                else if (property == RotationScreenProperty.rotation_180) {
+                    toggleScreenOrientation(0);
+                }
+                else if (property == RotationScreenProperty.rotation_270) {
+                    toggleScreenOrientation(1);
+                }
+            }
+        });
+        dialog_menu.setOnSettingsFontFaceLinsener(new onSettingsFontFaceLinsener()
+        {
+
+            @Override
+            public void settingsFontFace()
+            {
+                String currentFontFace = mSettings.getProperty(PROP_FONT_FACE, "");
+                DialogFontFaceSettings font_face_dialog =
+                        new DialogFontFaceSettings(mActivity, mEngine.getFontFaceList(), currentFontFace);
+                font_face_dialog.show();
+                font_face_dialog.setOnSettingsFontFaceListener(new onSettingsFontFaceListener()
+                {
+
+                    @Override
+                    public void settingfontFace(int location)
+                    {
+                        saveSetting(PROP_FONT_FACE, mEngine.getFontFaceList()[location]);
+                        syncViewSettings(getSettings(), true);
+
+                        dialog_menu.setButtonFontFaceText(mEngine.getFontFaceList()[location]);
+                    }
+                });
+            }
+        });
+        dialog_menu.setOnDisplayCurrentFontFace(new onDisplayCurrentFontFace()
+        {
+
+            @Override
+            public String displayCurrentFontFace()
+            {
+                return mSettings.getProperty(PROP_FONT_FACE, "");
+            }
+        });
+        dialog_menu.show();
+    }
+
+    /**
+     * @author qingyue
+     * @param orientation
+     */
+    private void toggleScreenOrientation(int orientation)
+    {
+        saveSetting(PROP_APP_SCREEN_ORIENTATION, String.valueOf(orientation));
+        mActivity.setScreenOrientation(orientation);
+    }
 }

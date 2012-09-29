@@ -42,6 +42,8 @@ import org.coolreader.donations.PurchaseObserver;
 import org.coolreader.donations.ResponseHandler;
 import org.koekak.android.ebookdownloader.SonyBookSelector;
 
+import com.onyx.android.sdk.ui.util.ScreenUpdateManager;
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.SearchManager;
@@ -77,6 +79,7 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.Surface;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -326,9 +329,20 @@ public class CoolReader extends Activity
 		if (newOrientation != screenOrientation) {
 			log.d("setScreenOrientation(" + angle + ")");
 			screenOrientation = newOrientation;
-			setRequestedOrientation(screenOrientation);
+			setRequestedOrientation(angle);
 			applyScreenOrientation(getWindow());
 		}
+
+//	    int newOrientation = screenOrientation;
+//	    if (angle == 0) {
+//	        newOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE; // level9 ? ActivityInfo_SCREEN_ORIENTATION_SENSOR_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
+//        }
+//	    else { 
+//	        newOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT; // level9 ? ActivityInfo_SCREEN_ORIENTATION_SENSOR_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+//        }
+//	    screenOrientation = newOrientation;
+//	    setRequestedOrientation(angle);
+//	    applyScreenOrientation(getWindow());
 	}
 
 	private Runnable backlightTimerTask = null;
