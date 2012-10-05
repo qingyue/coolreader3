@@ -34,6 +34,7 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.widget.LinearLayout;
 
 import com.onyx.android.sdk.data.cms.OnyxCmsCenter;
 import com.onyx.android.sdk.data.cms.OnyxMetadata;
@@ -44,21 +45,10 @@ import com.onyx.android.sdk.ui.dialog.DialogBookmarks;
 import com.onyx.android.sdk.ui.dialog.DialogBookmarks.onGoToPageListener;
 import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings;
 import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings.onSettingsFontFaceListener;
-import com.onyx.android.sdk.ui.dialog.DialogMenu;
-import com.onyx.android.sdk.ui.dialog.DialogMenu.FontSizeProperty;
-import com.onyx.android.sdk.ui.dialog.DialogMenu.LineSpacingProperty;
-import com.onyx.android.sdk.ui.dialog.DialogMenu.RotationScreenProperty;
-import com.onyx.android.sdk.ui.dialog.DialogMenu.onChangeFontSizeLinsener;
-import com.onyx.android.sdk.ui.dialog.DialogMenu.onChangePageLinsener;
-import com.onyx.android.sdk.ui.dialog.DialogMenu.onChangeRotationScreenLinsener;
-import com.onyx.android.sdk.ui.dialog.DialogMenu.onDecreaseFontLinsener;
-import com.onyx.android.sdk.ui.dialog.DialogMenu.onIncreaseFontLinsener;
-import com.onyx.android.sdk.ui.dialog.DialogMenu.onOpenTOCLinsener;
-import com.onyx.android.sdk.ui.dialog.DialogMenu.onSearchContentLinsener;
-import com.onyx.android.sdk.ui.dialog.DialogMenu.onSettingsFontFaceLinsener;
-import com.onyx.android.sdk.ui.dialog.DialogMenu.onSettingsLineSpacingLinsener;
-import com.onyx.android.sdk.ui.dialog.DialogMenu.onShowBookMarkLinsener;
-import com.onyx.android.sdk.ui.dialog.DialogMenu.onShowTTsViewLinsener;
+import com.onyx.android.sdk.ui.dialog.DialogReaderMenu;
+import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.FontSizeProperty;
+import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.LineSpacingProperty;
+import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.RotationScreenProperty;
 import com.onyx.android.sdk.ui.util.ScreenUpdateManager;
 import com.onyx.android.sdk.ui.util.ScreenUpdateManager.UpdateMode;
 
@@ -304,6 +294,8 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
     private BookInfo mBookInfo;
     
     private Properties mSettings = new Properties();
+    
+    private DialogReaderMenu mDialogReaderMenu = null;
 
     public Engine getEngine()
     {
@@ -1774,37 +1766,46 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 
 	    public boolean onTouchEvent(MotionEvent event) {
 	        int x = (int)event.getX();
+	        int y = (int)event.getY();
 
 	        if (state == STATE_INITIAL && event.getAction() != MotionEvent.ACTION_DOWN) {
 	            return unexpectedEvent(); // ignore unexpected event
 	        }
 
 	        if (event.getAction() == MotionEvent.ACTION_UP) {
-	            System.out.println("===ACTION_UP===");
+	            
 	        } else if (event.getAction() == MotionEvent.ACTION_DOWN) {
-	            System.out.println("===ACTION_DOWN===");
 	            start_x = x;
 	            width = getWidth();
 	            ReaderAction action = null;
-	            if ((x * 3) <= width) {
-	                System.out.println("===PAGE_UP===");
+
+	            if(x >= mBookmarkX && x < mBookmarkBitmap.getWidth() + mBookmarkX && y >= mBookmarkY && y < mBookmarkBitmap.getHeight()) {
+	                Bookmark bm = doc.getCurrentPageBookmark();
+	                for (int i = 0; i < mBookInfo.getBookmarkCount(); i++) {
+                        if (mBookInfo.getBookmark(i).getPosText().equals(bm.getPosText())) {
+                            removeBookmark(mBookInfo.getBookmark(i));
+                            return true;
+                        }
+                    }
+                    addBookmark(0);
+                    return true;
+                }
+	            else if ((x * 3) <= width) {
 	                action = ReaderAction.PAGE_UP;
 	            }
 	            else if (x <= ((width *2) / 3)) {
-	                System.out.println("===READER_MENU===");
 	                action = ReaderAction.READER_MENU;
 	            }
 	            else {
-	                System.out.println("===PAGE_DOWN===");
 	                action = ReaderAction.PAGE_DOWN;
 	            }
 	            state = STATE_DOWN_1;
 
 	            return performAction(action, false);
 	        } else if (event.getAction() == MotionEvent.ACTION_MOVE) {
-	            System.out.println("===ACTION_MOVE===");
+	            
 	        } else if (event.getAction() == MotionEvent.ACTION_OUTSIDE) {
-	            System.out.println("===ACTION_OUTSIDE===");
+	            
 	            return unexpectedEvent();
 	        }
 	        return true;
@@ -2023,10 +2024,17 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			}
 			public void done() {
 				if ( mBookInfo!=null && bm!=null ) {
+
+				    for (int i = 0; i < mBookInfo.getBookmarkCount(); i++) {
+				        if (mBookInfo.getBookmark(i).getPosText().equals(bm.getPosText())) {
+                            return;
+                        }
+				    }
+
 					if ( shortcut==0 )
-						mBookInfo.addBookmark(bm);
+					    mBookInfo.addBookmark(bm);
 					else
-						mBookInfo.setShortcutBookmark(shortcut, bm);
+					    mBookInfo.setShortcutBookmark(shortcut, bm);
 					mActivity.getDB().save(mBookInfo);
 					String s;
 					if ( shortcut==0 )
@@ -2116,7 +2124,6 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	{
 		int orientation = mActivity.getScreenOrientation();
 		orientation = ( orientation==0 )? 1 : 0;
-		System.out.println("orientation: "+orientation);
 		saveSetting(PROP_APP_SCREEN_ORIENTATION, String.valueOf(orientation));
 		mActivity.setScreenOrientation(orientation);
 	}
@@ -2842,7 +2849,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			break;
 		case DCMD_READER_MENU:
 //			mActivity.openOptionsMenu();
-		    showDialogMenu();
+		    showDialogReaderMenu();
 			break;
 		case DCMD_TOGGLE_DAY_NIGHT_MODE:
 			toggleDayNightMode();
@@ -5108,7 +5115,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 		canvas.drawBitmap(bmp, src, dst, null);
 		dimRect( canvas, dst );
 	}
-	
+
 	protected void doDraw(Canvas canvas)
 	{
        	try {
@@ -5153,6 +5160,8 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
         		log.d("onDraw() -- drawing empty screen");
     			canvas.drawColor(Color.rgb(64, 64, 64));
     		}
+
+    		drawBookmarkIcon(canvas);
     	} catch ( Exception e ) {
     		log.e("exception while drawing", e);
     	}
@@ -5928,48 +5937,22 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
     /**
      * @author qingyue
      */
-    private void showDialogMenu()
+    private void showDialogReaderMenu()
     {
-        final DialogMenu dialog_menu = new DialogMenu(mActivity);
-
-        PositionProperties pos = doc.getPositionProps(null);
-        dialog_menu.setCurrentPage(String.valueOf(pos.pageNumber + 1));
-        dialog_menu.setTotalPage(String.valueOf(pos.pageCount));
-
-        dialog_menu.setOnIncreaseFontLinsener(new onIncreaseFontLinsener()
+        DialogReaderMenu.IMenuHandler menu_handler = new DialogReaderMenu.IMenuHandler()
         {
-
+            
             @Override
-            public void IncreaseFont()
+            public void updateCurrentPage(LinearLayout l)
             {
-                ReaderView.this.switchFontFace(1);
+                // TODO Auto-generated method stub
+                
             }
-        });
-        dialog_menu.setOnDecreaseFontLinener(new onDecreaseFontLinsener()
-        {
-
-            @Override
-            public void DecreaseFont()
-            {
-                ReaderView.this.switchFontFace(-1);
-            }
-        });
-        dialog_menu.setOnOpenTOCLinsener(new onOpenTOCLinsener()
-        {
-
-            @Override
-            public void OpenTOCLinsener()
-            {
-                ReaderView.this.showTOC();
-            }
-        });
-        dialog_menu.setOnShowTTsViewLinsener(new onShowTTsViewLinsener()
-        {
-
+            
             @Override
             public void showTTsView()
             {
-                dialog_menu.dismiss();
+                mDialogReaderMenu.dismiss();
 
                 mActivity.initTTS(new TTS.OnTTSCreatedListener()
                 {
@@ -5981,110 +5964,29 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
                     }
                 });
             }
-        });
-        dialog_menu.setOnSearchContentLinsener(new onSearchContentLinsener()
-        {
-
+            
             @Override
-            public void SearchContent()
+            public void showTOC()
             {
-                ReaderView.this.showSearchDialog(null);
+                ReaderView.this.showTOC();
             }
-        });
-        dialog_menu.setOnChangePageLinsener(new onChangePageLinsener()
-        {
-
+            
             @Override
-            public void ChangePage(int i)
+            public void showSetFontView()
             {
-                if (i == 1) {
-                    mCurrentOnyxTapHandler.performAction(ReaderAction.PAGE_DOWN, false);
-
-                    PositionProperties pos = doc.getPositionProps(null);
-                    dialog_menu.setCurrentPage(String.valueOf(pos.pageNumber + 1));
-                    dialog_menu.setTotalPage(String.valueOf(pos.pageCount));
-                }
-                else {
-                    mCurrentOnyxTapHandler.performAction(ReaderAction.PAGE_UP, false);
-
-                    PositionProperties pos = doc.getPositionProps(null);
-                    dialog_menu.setCurrentPage(String.valueOf(pos.pageNumber + 1));
-                    dialog_menu.setTotalPage(String.valueOf(pos.pageCount));
-                }
+                // TODO Auto-generated method stub
+                
             }
-        });
-        dialog_menu.setOnSettingsLineSpacingLinener(new onSettingsLineSpacingLinsener()
-        {
-
+            
             @Override
-            public void SettingsLineSpacing(LineSpacingProperty property)
+            public void showLineSpacingView()
             {
-                switchInterlineSpacing(property);
+                // TODO Auto-generated method stub
+                
             }
-        });
-        dialog_menu.setOnChangeFontSizeLinsener(new onChangeFontSizeLinsener()
-        {
-
+            
             @Override
-            public void changeFontsize(FontSizeProperty property)
-            {
-                if (property == FontSizeProperty.decrease) {
-                    onAction(ReaderAction.ZOOM_OUT);
-                }
-                else if (property == FontSizeProperty.increase) {
-                    onAction(ReaderAction.ZOOM_IN);
-                }
-            }
-        });
-        dialog_menu.setOnChangeRotationScreenLinsener(new onChangeRotationScreenLinsener()
-        {
-
-            @Override
-            public void changeRotationScreen(RotationScreenProperty property)
-            {
-                if (property == RotationScreenProperty.rotation_0) {
-                    toggleScreenOrientation(0);
-                }
-                else if (property == RotationScreenProperty.rotation_90) {
-//                    toggleScreenOrientation(1);
-                }
-                else if (property == RotationScreenProperty.rotation_180) {
-//                    toggleScreenOrientation(0);
-                }
-                else if (property == RotationScreenProperty.rotation_270) {
-                    toggleScreenOrientation(1);
-                }
-            }
-        });
-        dialog_menu.setOnSettingsFontFaceLinsener(new onSettingsFontFaceLinsener()
-        {
-
-            @Override
-            public void settingsFontFace()
-            {
-                String currentFontFace = mSettings.getProperty(PROP_FONT_FACE, "");
-                DialogFontFaceSettings font_face_dialog =
-                        new DialogFontFaceSettings(mActivity, mEngine.getFontFaceList(), currentFontFace);
-                font_face_dialog.show();
-                font_face_dialog.setOnSettingsFontFaceListener(new onSettingsFontFaceListener()
-                {
-
-                    @Override
-                    public void settingfontFace(int location)
-                    {
-                        saveSetting(PROP_FONT_FACE, mEngine.getFontFaceList()[location]);
-                        syncViewSettings(getSettings(), true);
-
-                        dialog_menu.setButtonFontFaceText(mEngine.getFontFaceList()[location]);
-                    }
-                });
-            }
-        });
-        dialog_menu.setOnShowBookMarkLinsener(new onShowBookMarkLinsener()
-        {
-
-            @Override
-            public void ShowBookMark()
+            public void showBookMarks()
             {
                 BookInfo bookInfo = ReaderView.this.getBookInfo();
                 ArrayList<BookmarkItem> bookmarkItems = new ArrayList<BookmarkItem>();
@@ -6104,10 +6006,139 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
                     }
                 });
                 dialogBookmarks.show();
+//                mActivity.showBookmarksDialog();
             }
-        });
-        dialog_menu.setButtonFontFaceText(mSettings.getProperty(PROP_FONT_FACE, ""));
-        dialog_menu.show();
+            
+            @Override
+            public void setLineSpacing(LineSpacingProperty property)
+            {
+                switchInterlineSpacing(property);
+            }
+            
+            @Override
+            public void setFontFace()
+            {
+                String currentFontFace = mSettings.getProperty(PROP_FONT_FACE, "");
+                DialogFontFaceSettings font_face_dialog =
+                        new DialogFontFaceSettings(mActivity, mEngine.getFontFaceList(), currentFontFace);
+                font_face_dialog.show();
+                font_face_dialog.setOnSettingsFontFaceListener(new onSettingsFontFaceListener()
+                {
+                    
+                    @Override
+                    public void settingfontFace(int location)
+                    {
+                        saveSetting(PROP_FONT_FACE, mEngine.getFontFaceList()[location]);
+                        syncViewSettings(getSettings(), true);
+                        
+                        mDialogReaderMenu.setButtonFontFaceText(mEngine.getFontFaceList()[location]);
+                    }
+                });
+            }
+            
+            @Override
+            public void searchContent()
+            {
+                ReaderView.this.showSearchDialog(null);
+            }
+            
+            @Override
+            public void rotationScreen(int i)
+            {
+                // TODO Auto-generated method stub
+                
+            }
+            
+            @Override
+            public void previousPage()
+            {
+                mCurrentOnyxTapHandler.performAction(ReaderAction.PAGE_UP, false);
+
+                PositionProperties pos = doc.getPositionProps(null);
+                mDialogReaderMenu.setPageIndex(pos.pageNumber + 1);
+                mDialogReaderMenu.setPageCount(pos.pageCount);
+            }
+
+            @Override
+            public void nextPage()
+            {
+                mCurrentOnyxTapHandler.performAction(ReaderAction.PAGE_DOWN, false);
+
+                PositionProperties pos = doc.getPositionProps(null);
+                mDialogReaderMenu.setPageIndex(pos.pageNumber + 1);
+                mDialogReaderMenu.setPageCount(pos.pageCount);
+            }
+            
+            @Override
+            public void increaseFontSize()
+            {
+                ReaderView.this.switchFontFace(1);
+            }
+            
+            @Override
+            public void gotoPage(int i)
+            {
+                // TODO Auto-generated method stub
+                
+            }
+            
+            @Override
+            public int getPageIndex()
+            {
+                PositionProperties pos = doc.getPositionProps(null);
+                return pos.pageNumber + 1;
+            }
+            
+            @Override
+            public int getPageCount()
+            {
+                PositionProperties pos = doc.getPositionProps(null);
+                return pos.pageCount;
+            }
+            
+            @Override
+            public String getFontFace()
+            {
+                return mSettings.getProperty(PROP_FONT_FACE, "");
+            }
+            
+            @Override
+            public void decreaseFontSize()
+            {
+                ReaderView.this.switchFontFace(-1);
+            }
+            
+            @Override
+            public void changeRotationScreen(RotationScreenProperty property)
+            {
+                if (property == RotationScreenProperty.rotation_0) {
+                    toggleScreenOrientation(0);
+                    mDialogReaderMenu.dismiss();
+                }
+                else if (property == RotationScreenProperty.rotation_90) {
+//                    toggleScreenOrientation(1);
+//                    mDialogReaderMenu.dismiss();
+                }
+                else if (property == RotationScreenProperty.rotation_180) {
+//                    toggleScreenOrientation(0);
+//                    mDialogReaderMenu.dismiss();
+                }
+                else if (property == RotationScreenProperty.rotation_270) {
+                    toggleScreenOrientation(1);
+                    mDialogReaderMenu.dismiss();
+                }
+            }
+            
+            @Override
+            public void changeFontsize(FontSizeProperty property)
+            {
+                // TODO Auto-generated method stub
+                
+            }
+        };
+
+        mDialogReaderMenu = new DialogReaderMenu(mActivity, menu_handler);
+        mDialogReaderMenu.show();
     }
 
     /**
@@ -6120,5 +6151,33 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
         settings.put(PROP_APP_SCREEN_ORIENTATION, String.valueOf(orientation));
         setSettings(settings, null, true, true);
         mActivity.setScreenOrientation(orientation);
+    }
+
+    Bitmap mBookmarkBitmap = null;
+    int mBookmarkX = 0;
+    int mBookmarkY = 0;
+
+    /**
+     * @author qingyue
+     * @param canvas
+     * Drawing bookmark icon
+     */
+    private void drawBookmarkIcon(Canvas canvas) {
+        mBookmarkBitmap = android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.star_cancel);
+        if (doc != null && mBookInfo != null) {            
+            Bookmark bm = doc.getCurrentPageBookmark();
+            for (int i = 0; i < mBookInfo.getBookmarkCount(); i++) {
+                if (bm.getPosText().equals(mBookInfo.getBookmark(i).getPosText())) {
+                    mBookmarkBitmap = android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.star);
+                    break;
+                }
+            }
+        }
+
+        Paint paint = new Paint();
+        paint.setAlpha(100);
+        mBookmarkX = ReaderView.this.getWidth() - 80;
+        mBookmarkY = 15;
+        canvas.drawBitmap(mBookmarkBitmap, mBookmarkX, mBookmarkY, paint);
     }
 }
