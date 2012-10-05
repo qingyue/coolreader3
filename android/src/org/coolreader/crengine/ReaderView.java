@@ -39,6 +39,9 @@ import com.onyx.android.sdk.data.cms.OnyxCmsCenter;
 import com.onyx.android.sdk.data.cms.OnyxMetadata;
 import com.onyx.android.sdk.data.util.FileUtil;
 import com.onyx.android.sdk.data.util.RefValue;
+import com.onyx.android.sdk.ui.data.BookmarkItem;
+import com.onyx.android.sdk.ui.dialog.DialogBookmarks;
+import com.onyx.android.sdk.ui.dialog.DialogBookmarks.onGoToPageListener;
 import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings;
 import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings.onSettingsFontFaceListener;
 import com.onyx.android.sdk.ui.dialog.DialogMenu;
@@ -54,6 +57,7 @@ import com.onyx.android.sdk.ui.dialog.DialogMenu.onOpenTOCLinsener;
 import com.onyx.android.sdk.ui.dialog.DialogMenu.onSearchContentLinsener;
 import com.onyx.android.sdk.ui.dialog.DialogMenu.onSettingsFontFaceLinsener;
 import com.onyx.android.sdk.ui.dialog.DialogMenu.onSettingsLineSpacingLinsener;
+import com.onyx.android.sdk.ui.dialog.DialogMenu.onShowBookMarkLinsener;
 import com.onyx.android.sdk.ui.dialog.DialogMenu.onShowTTsViewLinsener;
 import com.onyx.android.sdk.ui.util.ScreenUpdateManager;
 import com.onyx.android.sdk.ui.util.ScreenUpdateManager.UpdateMode;
@@ -6074,6 +6078,32 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
                         dialog_menu.setButtonFontFaceText(mEngine.getFontFaceList()[location]);
                     }
                 });
+            }
+        });
+        dialog_menu.setOnShowBookMarkLinsener(new onShowBookMarkLinsener()
+        {
+
+            @Override
+            public void ShowBookMark()
+            {
+                BookInfo bookInfo = ReaderView.this.getBookInfo();
+                ArrayList<BookmarkItem> bookmarkItems = new ArrayList<BookmarkItem>();
+                for (int i = 0; i < bookInfo.getBookmarkCount(); i++) {
+                    BookmarkItem bookmarkItem = new BookmarkItem(bookInfo.getBookmark(i).getPosText(), bookInfo.getBookmark(i));
+                    bookmarkItems.add(bookmarkItem);
+                }
+
+                DialogBookmarks dialogBookmarks = new DialogBookmarks(mActivity, bookmarkItems);
+                dialogBookmarks.setOnGoToPageListener(new onGoToPageListener()
+                {
+
+                    @Override
+                    public void onGoToPage(BookmarkItem item)
+                    {
+                        ReaderView.this.goToBookmark((Bookmark) item.getTag());
+                    }
+                });
+                dialogBookmarks.show();
             }
         });
         dialog_menu.setButtonFontFaceText(mSettings.getProperty(PROP_FONT_FACE, ""));
