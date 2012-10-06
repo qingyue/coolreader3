@@ -43,10 +43,10 @@ import com.onyx.android.sdk.data.util.FileUtil;
 import com.onyx.android.sdk.data.util.RefValue;
 import com.onyx.android.sdk.ui.data.BookmarkItem;
 import com.onyx.android.sdk.ui.dialog.DialogBookmarks;
-import com.onyx.android.sdk.ui.dialog.DialogGotoPage;
 import com.onyx.android.sdk.ui.dialog.DialogBookmarks.onGoToPageListener;
 import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings;
 import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings.onSettingsFontFaceListener;
+import com.onyx.android.sdk.ui.dialog.DialogGotoPage;
 import com.onyx.android.sdk.ui.dialog.DialogGotoPage.AcceptNumberListener;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.FontSizeProperty;
@@ -1780,39 +1780,57 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	        }
 
 	        if (event.getAction() == MotionEvent.ACTION_UP) {
-	            
-	        } else if (event.getAction() == MotionEvent.ACTION_DOWN) {
+	            return performAction(shortTapAction, false);
+	        }
+	        else if (event.getAction() == MotionEvent.ACTION_DOWN) {
 	            start_x = x;
+	            start_y = y;
 	            width = getWidth();
-	            ReaderAction action = null;
+	            firstDown = Utils.timeStamp();
 
 	            if(x >= mBookmarkX && x < mBookmarkBitmap.getWidth() + mBookmarkX && y >= mBookmarkY && y < mBookmarkBitmap.getHeight()) {
 	                Bookmark bm = doc.getCurrentPageBookmark();
 	                for (int i = 0; i < mBookInfo.getBookmarkCount(); i++) {
-                        if (mBookInfo.getBookmark(i).getPosText().equals(bm.getPosText())) {
-                            removeBookmark(mBookInfo.getBookmark(i));
-                            return true;
-                        }
-                    }
-                    addBookmark(0);
-                    return true;
-                }
+	                    if (mBookInfo.getBookmark(i).getPosText().equals(bm.getPosText())) {
+	                        removeBookmark(mBookInfo.getBookmark(i));
+	                        return true;
+	                    }
+	                }
+	                addBookmark(0);
+	                return true;
+	            }
 	            else if ((x * 3) <= width) {
-	                action = ReaderAction.PAGE_UP;
+	                shortTapAction = ReaderAction.PAGE_UP;
 	            }
 	            else if (x <= ((width *2) / 3)) {
-	                action = ReaderAction.READER_MENU;
+	                shortTapAction = ReaderAction.READER_MENU;
 	            }
 	            else {
-	                action = ReaderAction.PAGE_DOWN;
+	                shortTapAction = ReaderAction.PAGE_DOWN;
 	            }
 	            state = STATE_DOWN_1;
 
-	            return performAction(action, false);
+	            return true;
 	        } else if (event.getAction() == MotionEvent.ACTION_MOVE) {
-	            
-	        } else if (event.getAction() == MotionEvent.ACTION_OUTSIDE) {
-	            
+	            int dx = x - start_x;
+	            int dy = y - start_y;
+	            int adx = dx > 0 ? dx : -dx;
+	            int ady = dy > 0 ? dy : -dy;
+	            int distance = adx + ady;
+	            int dragThreshold = mActivity.getPalmTipPixels();
+
+	            if (distance < dragThreshold) {
+	                return true;
+	            }
+
+	            boolean isPageMode = mSettings.getInt(PROP_PAGE_VIEW_MODE, 1) == 1;
+	            int dir = isPageMode ? x - start_x : y - start_y;
+	            if (pageFlipAnimationSpeedMs == 0 || DeviceInfo.EINK_SCREEN) {
+	                // no animation
+	                return performAction(dir < 0 ? ReaderAction.PAGE_DOWN : ReaderAction.PAGE_UP, false);
+	            }
+	        }
+	        else if (event.getAction() == MotionEvent.ACTION_OUTSIDE) {
 	            return unexpectedEvent();
 	        }
 	        return true;
