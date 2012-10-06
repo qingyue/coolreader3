@@ -150,10 +150,10 @@ public class FileBrowser extends LinearLayout {
 		public boolean onKeyDown(int keyCode, KeyEvent event) {
 			if ( keyCode==KeyEvent.KEYCODE_BACK && mActivity.isBookOpened() ) {
 				if ( isRootDir() ) {
-					if ( mActivity.isBookOpened() ) {
-						mActivity.showReader();
-						return true;
-					} else
+//					if ( mActivity.isBookOpened() ) {
+//						mActivity.showReader();
+//						return true;
+//					} else
 						return super.onKeyDown(keyCode, event);
 				}
 				showParentDirectory();
