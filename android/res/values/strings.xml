@@ -399,4 +399,5 @@
     <!-- qingyue add -->
     <string name="interline_space_increase">interline space increase</string>
     <string name="interline_space_decrease">interline space decrease</string>
+    <string name="toast_exceeds_pages">Page number exceeds the total number of pages</string>
 </resources>

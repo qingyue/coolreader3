@@ -35,6 +35,7 @@ import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.widget.LinearLayout;
+import android.widget.Toast;
 
 import com.onyx.android.sdk.data.cms.OnyxCmsCenter;
 import com.onyx.android.sdk.data.cms.OnyxMetadata;
@@ -42,9 +43,11 @@ import com.onyx.android.sdk.data.util.FileUtil;
 import com.onyx.android.sdk.data.util.RefValue;
 import com.onyx.android.sdk.ui.data.BookmarkItem;
 import com.onyx.android.sdk.ui.dialog.DialogBookmarks;
+import com.onyx.android.sdk.ui.dialog.DialogGotoPage;
 import com.onyx.android.sdk.ui.dialog.DialogBookmarks.onGoToPageListener;
 import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings;
 import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings.onSettingsFontFaceListener;
+import com.onyx.android.sdk.ui.dialog.DialogGotoPage.AcceptNumberListener;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.FontSizeProperty;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.LineSpacingProperty;
@@ -5638,10 +5641,16 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
     
     public void goToPage( int pageNumber )
     {
-		BackgroundThread.ensureGUI();
-		doEngineCommand(ReaderView.ReaderCommand.DCMD_GO_PAGE, pageNumber-1);
+        PositionProperties pos = doc.getPositionProps(null);
+        if (pageNumber <= pos.pageCount) {
+            BackgroundThread.ensureGUI();
+            doEngineCommand(ReaderView.ReaderCommand.DCMD_GO_PAGE, pageNumber-1);
+        }
+        else {
+            mActivity.showToast(R.string.toast_exceeds_pages, Toast.LENGTH_LONG);
+        }
     }
-    
+
     public void goToPercent( final int percent )
     {
 		BackgroundThread.ensureGUI();
@@ -5939,7 +5948,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
      */
     private void showDialogReaderMenu()
     {
-        DialogReaderMenu.IMenuHandler menu_handler = new DialogReaderMenu.IMenuHandler()
+        final DialogReaderMenu.IMenuHandler menu_handler = new DialogReaderMenu.IMenuHandler()
         {
             
             @Override
@@ -6006,7 +6015,6 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
                     }
                 });
                 dialogBookmarks.show();
-//                mActivity.showBookmarksDialog();
             }
             
             @Override
@@ -6078,8 +6086,8 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
             @Override
             public void gotoPage(int i)
             {
-                // TODO Auto-generated method stub
-                
+                ReaderView.this.goToPage(i);
+                mDialogReaderMenu.dismiss();
             }
             
             @Override
@@ -6134,6 +6142,23 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
             {
                 // TODO Auto-generated method stub
                 
+            }
+
+            @Override
+            public void showGoToPageDialog()
+            {
+                DialogGotoPage dialogGotoPage = new DialogGotoPage(mActivity);
+                dialogGotoPage.setAcceptNumberListener(new AcceptNumberListener()
+                {
+
+                    @Override
+                    public void onAcceptNumber(int num)
+                    {
+                        ReaderView.this.goToPage(num);
+                        mDialogReaderMenu.dismiss();
+                    }
+                });
+                dialogGotoPage.show();
             }
         };
 
