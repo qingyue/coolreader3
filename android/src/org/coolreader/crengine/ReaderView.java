@@ -48,6 +48,7 @@ import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings;
 import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings.onSettingsFontFaceListener;
 import com.onyx.android.sdk.ui.dialog.DialogGotoPage;
 import com.onyx.android.sdk.ui.dialog.DialogGotoPage.AcceptNumberListener;
+import com.onyx.android.sdk.ui.dialog.DialogGotoPage.onDismissMenuDialogListener;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.FontSizeProperty;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.LineSpacingProperty;
@@ -6177,6 +6178,15 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
                     public void onAcceptNumber(int num)
                     {
                         ReaderView.this.goToPage(num);
+                        mDialogReaderMenu.dismiss();
+                    }
+                });
+                dialogGotoPage.setOnDismissMenuDialogListener(new onDismissMenuDialogListener()
+                {
+
+                    @Override
+                    public void dismissMenudialog()
+                    {
                         mDialogReaderMenu.dismiss();
                     }
                 });
