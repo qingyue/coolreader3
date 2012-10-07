@@ -1,11 +1,9 @@
 package org.coolreader.crengine;
 
-import org.coolreader.crengine.N2EpdController;
-
-import com.onyx.android.sdk.ui.util.ScreenUpdateManager;
-
 import android.util.Log;
 import android.view.View;
+
+import com.onyx.android.sdk.device.EpdController;
 
 public class EinkScreen {
 	
@@ -90,7 +88,7 @@ public class EinkScreen {
 		}
 		else if (DeviceInfo.EINK_BOOX) {
 		    Log.d("cr3", "eink_book screen");
-		    ScreenUpdateManager.invalidate(view, ScreenUpdateManager.UpdateMode.GC);
+		    EpdController.invalidate(view, EpdController.UpdateMode.GC);
 		}
 	}
 
