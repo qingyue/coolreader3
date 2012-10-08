@@ -6191,6 +6191,48 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
                 });
                 dialogGotoPage.show();
             }
+
+            @Override
+            public void zoomToPage()
+            {
+                // TODO Auto-generated method stub
+                
+            }
+
+            @Override
+            public void zoomToWidth()
+            {
+                // TODO Auto-generated method stub
+                
+            }
+
+            @Override
+            public void zoomToHeight()
+            {
+                // TODO Auto-generated method stub
+                
+            }
+
+            @Override
+            public void zoomBySelection()
+            {
+                // TODO Auto-generated method stub
+                
+            }
+
+            @Override
+            public void zoomByTwoPoints()
+            {
+                // TODO Auto-generated method stub
+                
+            }
+
+            @Override
+            public void zoomByValue(double z)
+            {
+                // TODO Auto-generated method stub
+                
+            }
         };
 
         mDialogReaderMenu = new DialogReaderMenu(mActivity, menu_handler);
