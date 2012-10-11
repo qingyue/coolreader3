@@ -1780,6 +1780,13 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	        }
 
 	        if (event.getAction() == MotionEvent.ACTION_UP) {
+	            long duration = Utils.timeInterval(firstDown);
+	            if (duration > LONG_KEYPRESS_TIME) {
+	                startSelection();
+	                updateSelection( start_x, start_y, x, y, true );
+	                selectionModeActive = false;
+	                return true;
+	            }
 	            return performAction(shortTapAction, false);
 	        }
 	        else if (event.getAction() == MotionEvent.ACTION_DOWN) {
