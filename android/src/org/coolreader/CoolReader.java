@@ -334,11 +334,19 @@ public class CoolReader extends Activity
 	     * qingyue add
 	     */
 	    int newOrientation = screenOrientation;
-	    if (angle == 0) {
-	        newOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
-	    }
-	    else {
-	        newOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
+	    switch (angle) {
+	    case 0:
+	        newOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT; // level9 ? ActivityInfo_SCREEN_ORIENTATION_SENSOR_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+	        break;
+	    case 1:
+	        newOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE; // level9 ? ActivityInfo_SCREEN_ORIENTATION_SENSOR_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
+	        break;
+	    case 2:
+	        newOrientation = ActivityInfo_SCREEN_ORIENTATION_REVERSE_PORTRAIT;
+	        break;
+	    case 3:
+	        newOrientation = ActivityInfo_SCREEN_ORIENTATION_REVERSE_LANDSCAPE;
+	        break;
 	    }
 	    if (newOrientation != screenOrientation) {
 	        screenOrientation = newOrientation;

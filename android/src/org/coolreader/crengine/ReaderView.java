@@ -20,6 +20,7 @@ import org.coolreader.crengine.Engine.HyphDict;
 import org.koekak.android.ebookdownloader.SonyBookSelector;
 
 import android.content.Context;
+import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -6149,20 +6150,20 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
             public void changeRotationScreen(RotationScreenProperty property)
             {
                 if (property == RotationScreenProperty.rotation_0) {
-                    toggleScreenOrientation(0);
                     mDialogReaderMenu.dismiss();
+                    toggleScreenOrientation(0);
                 }
                 else if (property == RotationScreenProperty.rotation_90) {
-//                    toggleScreenOrientation(1);
-//                    mDialogReaderMenu.dismiss();
+                    mDialogReaderMenu.dismiss();
+                    toggleScreenOrientation(3);
                 }
                 else if (property == RotationScreenProperty.rotation_180) {
-//                    toggleScreenOrientation(0);
-//                    mDialogReaderMenu.dismiss();
+                    mDialogReaderMenu.dismiss();
+                    toggleScreenOrientation(2);
                 }
                 else if (property == RotationScreenProperty.rotation_270) {
-                    toggleScreenOrientation(1);
                     mDialogReaderMenu.dismiss();
+                    toggleScreenOrientation(1);
                 }
             }
             
