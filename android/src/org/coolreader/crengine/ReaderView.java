@@ -770,6 +770,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 		sel.startY = startY;
 		sel.endX = endX;
 		sel.endY = endY;
+
 		mEngine.execute(new Task() {
 			@Override
 			public void work() throws Exception {
@@ -787,14 +788,45 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 
 			@Override
 			public void done() {
-				if ( isUpdateEnd ) {
-					String text = sel.text;
-					if ( text!=null && text.length()>0 ) {
-						onSelectionComplete( sel );
-					} else {
-						clearSelection();
-					}
-				}
+			    if ( isUpdateEnd ) {
+			        String text = sel.text;
+			        if ( text!=null && text.length()>0 ) {
+			            boolean res;
+			            Selection selection = new Selection();
+			            ReaderCommand cmd = ReaderCommand.DCMD_SELECT_MOVE_LEFT_BOUND_BY_WORDS;
+			            res = doc.moveSelection(selection, cmd.nativeId, 0);
+			            MoveSelectionCallback callback = new MoveSelectionCallback()
+			            {
+
+			                @Override
+			                public void onNewSelection(Selection selection)
+			                {
+			                    // TODO Auto-generated method stub
+
+			                }
+
+			                @Override
+			                public void onFail()
+			                {
+			                    // TODO Auto-generated method stub
+
+			                }
+			            };
+			            mIsSelection = true;
+			            PositionProperties pos = doc.getPositionProps(null);
+			            mSelectionLeftX = selection.startX -mLeftBitmap.getWidth() / 2;
+			            mSelectionLeftY = selection.startY - pos.y;
+			            mSelectionRightX = selection.endX + mRightBitmap.getWidth() / 2;
+			            mSelectionRightY = selection.endY - pos.y;
+			            if ( res ) {
+			                callback.onNewSelection(selection);
+			            }
+
+			            onSelectionComplete( sel );
+			        } else {
+			            clearSelection();
+			        }
+			    }
 			}
 		});
 	}
@@ -816,7 +848,6 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	private void onSelectionComplete( Selection sel ) {
 		int iSelectionAction;
 		iSelectionAction = isMultiSelection(sel) ? mMultiSelectionAction : mSelectionAction;
-		
 		switch ( iSelectionAction ) {
 		case SELECTION_ACTION_TOOLBAR:
 			SelectionToolbarDlg.showDialog(mActivity, ReaderView.this, sel);
@@ -1521,7 +1552,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	
 	@Override
 	public boolean onTouchEvent(MotionEvent event) {
-		
+		System.out.println("===readerview onTouchEvent===");
 		if ( !isTouchScreenEnabled ) {
 			return true;
 		}
@@ -1775,43 +1806,68 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	        int x = (int)event.getX();
 	        int y = (int)event.getY();
 
+	        System.out.println(start_x > mSelectionLeftX - mLeftBitmap.getWidth());
+	        System.out.println(start_x < mSelectionLeftX);
+	        System.out.println(start_y < mSelectionLeftY);
+	        System.out.println(start_y > mSelectionLeftY - mLeftBitmap.getHeight());
+            boolean inLeftZoom = start_x > mSelectionLeftX - mLeftBitmap.getWidth() && start_x < mSelectionLeftX
+                    && start_y < mSelectionLeftY && start_y > mSelectionLeftY - mLeftBitmap.getHeight();
+
 	        if (state == STATE_INITIAL && event.getAction() != MotionEvent.ACTION_DOWN) {
 	            return unexpectedEvent(); // ignore unexpected event
 	        }
 
 	        if (event.getAction() == MotionEvent.ACTION_UP) {
+	            System.out.println("===ACTION_UP===");
+	            long duration = Utils.timeInterval(firstDown);
+	            if (duration > LONG_KEYPRESS_TIME) {
+	                startSelection();
+	                updateSelection( start_x, start_y, x, y, true );
+	                selectionModeActive = false;
+	                return true;
+	            }
+
 	            return performAction(shortTapAction, false);
 	        }
 	        else if (event.getAction() == MotionEvent.ACTION_DOWN) {
+	            System.out.println("===ACTION_DOWN===");
 	            start_x = x;
 	            start_y = y;
 	            width = getWidth();
 	            firstDown = Utils.timeStamp();
 
-	            if(x >= mBookmarkX && x < mBookmarkBitmap.getWidth() + mBookmarkX && y >= mBookmarkY && y < mBookmarkBitmap.getHeight()) {
-	                Bookmark bm = doc.getCurrentPageBookmark();
-	                for (int i = 0; i < mBookInfo.getBookmarkCount(); i++) {
-	                    if (mBookInfo.getBookmark(i).getPosText().equals(bm.getPosText())) {
-	                        removeBookmark(mBookInfo.getBookmark(i));
-	                        return true;
-	                    }
-	                }
-	                addBookmark(0);
-	                return true;
-	            }
-	            else if ((x * 3) <= width) {
-	                shortTapAction = ReaderAction.PAGE_UP;
-	            }
-	            else if (x <= ((width *2) / 3)) {
-	                shortTapAction = ReaderAction.READER_MENU;
-	            }
+	            if (mIsSelection && inLeftZoom) {
+	                System.out.println("22222222222222222222222");
+                    return true;
+                }
 	            else {
-	                shortTapAction = ReaderAction.PAGE_DOWN;
-	            }
-	            state = STATE_DOWN_1;
+	                if(x >= mBookmarkX && x < mBookmarkBitmap.getWidth() + mBookmarkX && y >= mBookmarkY && y < mBookmarkBitmap.getHeight()) {
+	                    Bookmark bm = doc.getCurrentPageBookmark();
+	                    for (int i = 0; i < mBookInfo.getBookmarkCount(); i++) {
+	                        if (mBookInfo.getBookmark(i).getPosText().equals(bm.getPosText())) {
+	                            removeBookmark(mBookInfo.getBookmark(i));
+	                            return true;
+	                        }
+	                    }
+	                    addBookmark(0);
+	                    return true;
+	                }
+	                else if ((x * 3) <= width) {
+	                    shortTapAction = ReaderAction.PAGE_UP;
+	                }
+	                else if (x <= ((width *2) / 3)) {
+	                    shortTapAction = ReaderAction.READER_MENU;
+	                }
+	                else {
+	                    shortTapAction = ReaderAction.PAGE_DOWN;
+	                }
+	                state = STATE_DOWN_1;
 
-	            return true;
+	                return true;
+                }
+
 	        } else if (event.getAction() == MotionEvent.ACTION_MOVE) {
+	            System.out.println("===ACTION_MOVE===");
 	            int dx = x - start_x;
 	            int dy = y - start_y;
 	            int adx = dx > 0 ? dx : -dx;
@@ -1934,6 +1990,8 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
     private boolean flgHighlightBookmarks = false;
     public void clearSelection()
     {
+        mIsSelection = false;
+
 		BackgroundThread.ensureGUI();
     	if (mBookInfo == null || !isBookLoaded())
     		return;
@@ -4194,6 +4252,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	}
 	private void drawCallback( DrawCanvasCallback callback, Rect rc, boolean isPartially )
 	{
+	    System.out.println("===drawCallback===");
 		if ( !mSurfaceCreated )
 			return;
 		//synchronized(surfaceLock) { }
@@ -5143,6 +5202,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 
 	protected void doDraw(Canvas canvas)
 	{
+	    System.out.println("===doDraw===");
        	try {
     		log.d("doDraw() called");
     		if ( mInitialized && mCurrentPageInfo!=null ) {
@@ -5187,6 +5247,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
     		}
 
     		drawBookmarkIcon(canvas);
+            showSelectionView(canvas);
     	} catch ( Exception e ) {
     		log.e("exception while drawing", e);
     	}
@@ -5197,6 +5258,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 		drawCallback(new DrawCanvasCallback() {
 			@Override
 			public void drawTo(Canvas c) {
+			    System.out.println("===drawTo===");
 				doDraw(c);
 			}
 		}, null, false);
@@ -5206,6 +5268,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 		drawCallback(new DrawCanvasCallback() {
 			@Override
 			public void drawTo(Canvas c) {
+			    System.out.println("222===drawTo===");
 				doDraw(c);
 			}
 		}, null, isPartially);
@@ -5701,6 +5764,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
     		private Selection selection = new Selection();
 			@Override
 			public void work() throws Exception {
+			    System.out.println("param: "+param);
 				res = doc.moveSelection(selection, command.nativeId, param);
 			}
 
@@ -5710,6 +5774,17 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 					clearImageCache();
 					invalidate();
 					drawPage();
+
+					PositionProperties pos = doc.getPositionProps(null);
+					System.out.println("--->"+pos.pageHeight+", "+pos.pageWidth+", "+pos.x+", "+pos.y);
+
+					mSelectionLeftX = selection.startX -mLeftBitmap.getWidth() / 2;
+					mSelectionLeftY = selection.startY - pos.y;
+					mSelectionRightX = selection.endX + mRightBitmap.getWidth() / 2;
+					mSelectionRightY = selection.endY - pos.y;
+
+					System.out.println("selection.text: "+selection.text);
+					System.out.println("startX: "+selection.startX+", startY: "+selection.startY+", endX: "+selection.endX+", endY: "+selection.endY);
 					if ( res )
 						callback.onNewSelection(selection);
 					else
@@ -6146,12 +6221,10 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
                     mDialogReaderMenu.dismiss();
                 }
                 else if (property == RotationScreenProperty.rotation_90) {
-//                    toggleScreenOrientation(1);
-//                    mDialogReaderMenu.dismiss();
+                    //do nothing
                 }
                 else if (property == RotationScreenProperty.rotation_180) {
-//                    toggleScreenOrientation(0);
-//                    mDialogReaderMenu.dismiss();
+                    //do nothing
                 }
                 else if (property == RotationScreenProperty.rotation_270) {
                     toggleScreenOrientation(1);
@@ -6190,6 +6263,48 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
                     }
                 });
                 dialogGotoPage.show();
+            }
+
+            @Override
+            public void zoomToPage()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void zoomToWidth()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void zoomToHeight()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void zoomBySelection()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void zoomByTwoPoints()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void zoomByValue(double z)
+            {
+                // TODO Auto-generated method stub
+
             }
         };
 
@@ -6235,5 +6350,26 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
         mBookmarkX = ReaderView.this.getWidth() - 80;
         mBookmarkY = 15;
         canvas.drawBitmap(mBookmarkBitmap, mBookmarkX, mBookmarkY, paint);
+    }
+
+    Bitmap mLeftBitmap = null;
+    Bitmap mRightBitmap = null;
+    int mSelectionLeftX = 0;
+    int mSelectionLeftY = 0;
+    int mSelectionRightX = 0;
+    int mSelectionRightY = 0;
+    boolean mIsSelection = false;
+
+    public void showSelectionView(Canvas canvas)
+    {
+        mLeftBitmap = android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.color_picker_icon);
+        mRightBitmap = android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.color_picker_icon);
+        System.out.println("mIsSelection: "+mIsSelection);
+        if (mIsSelection) {
+            System.out.println("leftx: "+mSelectionLeftX+", lefty: "+mSelectionLeftY+", rightx: "+mSelectionRightX+", righty: "+mSelectionRightY);
+            Paint paint = new Paint();
+            canvas.drawBitmap(mLeftBitmap, mSelectionLeftX, mSelectionLeftY, paint);
+            canvas.drawBitmap(mRightBitmap, mSelectionRightX, mSelectionRightY, paint);
+        }
     }
 }
