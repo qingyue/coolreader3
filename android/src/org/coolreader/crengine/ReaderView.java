@@ -875,9 +875,11 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	public void copyToClipboard( String text ) {
 		if ( text!=null && text.length()>0 ) {
 			ClipboardManager cm = mActivity.getClipboardmanager();
-			cm.setText(text);
-			log.i("Setting clipboard text: " + text);
-			mActivity.showToast("Selection text copied to clipboard");
+			if(cm != null) {
+			    cm.setText(text);
+			    log.i("Setting clipboard text: " + text);
+			    mActivity.showToast("Selection text copied to clipboard");
+			}
 		}
 	}
 	
