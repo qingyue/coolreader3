@@ -20,7 +20,6 @@ import org.coolreader.crengine.Engine.HyphDict;
 import org.koekak.android.ebookdownloader.SonyBookSelector;
 
 import android.content.Context;
-import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -6112,7 +6111,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
             @Override
             public void increaseFontSize()
             {
-                ReaderView.this.switchFontFace(1);
+                onAction(ReaderAction.ZOOM_IN);
             }
             
             @Override
@@ -6145,7 +6144,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
             @Override
             public void decreaseFontSize()
             {
-                ReaderView.this.switchFontFace(-1);
+                onAction(ReaderAction.ZOOM_OUT);
             }
             
             @Override
