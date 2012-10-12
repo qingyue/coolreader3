@@ -740,7 +740,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			onAction(actionToRepeat, new Runnable() {
 				public void run() {
 				    L.d("action is compeleted");
-				    EpdController.invalidate(ReaderView.this, EpdController.UpdateMode.GC);
+				    EpdController.invalidate(ReaderView.this, EpdController.UpdateMode.GU);
 					if ( trackedKeyEvent==event ) {
 						log.v("action is completed : " + actionToRepeat );
 						repeatActionActive = false;
@@ -3838,7 +3838,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 //				invalidate();
 //			}
 //    		if (mOpened)
-			EpdController.invalidate(ReaderView.this, EpdController.UpdateMode.GC);
+			EpdController.invalidate(ReaderView.this, EpdController.UpdateMode.GU);
    			mEngine.hideProgress();
    			if ( doneHandler!=null )
    				doneHandler.run();
@@ -4214,7 +4214,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 //						EinkScreen.PrepareController(this, isPartially);
 					}
 					callback.drawTo(canvas);
-					EpdController.invalidate(this, EpdController.UpdateMode.GC);
+					EpdController.invalidate(this, EpdController.UpdateMode.GU);
 				}
 			} finally {
 				//log.v("exiting finally");

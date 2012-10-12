@@ -88,7 +88,7 @@ public class EinkScreen {
 		}
 		else if (DeviceInfo.EINK_BOOX) {
 		    Log.d("cr3", "eink_book screen");
-		    EpdController.invalidate(view, EpdController.UpdateMode.GC);
+		    EpdController.invalidate(view, EpdController.UpdateMode.GU);
 		}
 	}
 
