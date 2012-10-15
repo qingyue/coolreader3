@@ -54,6 +54,7 @@ import com.onyx.android.sdk.ui.dialog.DialogReaderMenu;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.FontSizeProperty;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.LineSpacingProperty;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.RotationScreenProperty;
+import com.onyx.android.sdk.ui.dialog.DialogTOC;
 
 public class ReaderView extends SurfaceView implements android.view.SurfaceHolder.Callback, Settings {
 
@@ -6008,7 +6009,25 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
             @Override
             public void showTOC()
             {
-                ReaderView.this.showTOC();
+                TOCItem toc = doc.getTOC();
+                ArrayList<com.onyx.android.sdk.ui.data.TOCItem> tocItems = new ArrayList<com.onyx.android.sdk.ui.data.TOCItem>();
+                for (int i = 0; i < toc.getChildCount(); i++) {
+                    TOCItem tocItem = toc.getChild(i);
+                    com.onyx.android.sdk.ui.data.TOCItem item = new com.onyx.android.sdk.ui.data.TOCItem(tocItem.getName(), tocItem.getPage() + 1, tocItem);
+                    tocItems.add(item);
+                }
+
+                DialogTOC dialogTOC = new DialogTOC(mActivity, tocItems);
+                dialogTOC.setOnGoToPageListener(new DialogTOC.onGoToPageListener()
+                {
+                    @Override
+                    public void onGoToPage(com.onyx.android.sdk.ui.data.TOCItem item)
+                    {
+                        TOCItem toc = (TOCItem) item.getTag();
+                        ReaderView.this.goToPage(toc.getPage() + 1);
+                    }
+                });
+                dialogTOC.show();
             }
             
             @Override
