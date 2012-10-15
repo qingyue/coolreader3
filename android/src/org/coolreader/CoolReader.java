@@ -59,6 +59,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Configuration;
 import android.content.res.TypedArray;
+import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.media.AudioManager;
 import android.net.Uri;
@@ -99,7 +100,7 @@ public class CoolReader extends Activity
 	History mHistory;
 	CRDB mDB;
 	private BackgroundThread mBackgroundThread;
-	
+	private View mBackgroundView = null;
 	
 	public CoolReader() {
 	    brightnessHackError = false; //DeviceInfo.SAMSUNG_BUTTONS_HIGHLIGHT_PATCH;
@@ -675,14 +676,21 @@ public class CoolReader extends Activity
 		
 		mBrowser = new FileBrowser(this, mEngine, mScanner, mHistory);
 
-		
+		mBackgroundView = new View(this);
+		android.view.ViewGroup.LayoutParams params = new LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT);
+		mBackgroundView.setLayoutParams(params);
+		mBackgroundView.setBackgroundColor(Color.WHITE);
+
 		mFrame.addView(mReaderView);
-		mFrame.addView(mBrowser);
+		mFrame.addView(mBackgroundView);
+//		mFrame.addView(mBrowser);
 //		mFrame.addView(startupView);
+
 		setContentView( mFrame );
         log.i("initializing browser");
         mBrowser.init();
-		showView(mBrowser, false);
+        showView(mBackgroundView, false);
+//      showView(mBrowser, false);
         log.i("initializing reader");
         mBrowser.setSortOrder( props.getProperty(ReaderView.PROP_APP_BOOK_SORT_ORDER));
 		mBrowser.setSimpleViewMode(props.getBool(ReaderView.PROP_APP_FILE_BROWSER_SIMPLE_MODE, false));
@@ -1214,6 +1222,7 @@ public class CoolReader extends Activity
 			log.v("showView : view " + view.getClass().getSimpleName() + " is already shown");
 			return;
 		}
+
 		log.v("showView : showing view " + view.getClass().getSimpleName());
 		mFrame.bringChildToFront(view);
 		for ( int i=0; i<mFrame.getChildCount(); i++ ) {
