@@ -2305,18 +2305,4 @@ public class CoolReader extends Activity
     	// TODO: some logging
     	Log.i(LOG_TEXT_KEY, activity);
     }
-
-    //Set fullscreen
-    @Override
-    public void onWindowFocusChanged(boolean hasFocus)
-    {
-        if (mShowView != null && (mShowView instanceof ReaderView)) {
-            if (hasFocus) {
-                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN);
-            }
-            else {
-                getWindow().addFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN);
-            }
-        }
-    }
 }
