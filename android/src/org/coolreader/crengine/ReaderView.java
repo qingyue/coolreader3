@@ -43,8 +43,10 @@ import com.onyx.android.sdk.data.util.FileUtil;
 import com.onyx.android.sdk.data.util.RefValue;
 import com.onyx.android.sdk.device.EpdController;
 import com.onyx.android.sdk.ui.data.BookmarkItem;
+import com.onyx.android.sdk.ui.data.DirectoryItem;
 import com.onyx.android.sdk.ui.dialog.DialogBookmarks;
 import com.onyx.android.sdk.ui.dialog.DialogBookmarks.onGoToPageListener;
+import com.onyx.android.sdk.ui.dialog.DialogDirectory;
 import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings;
 import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings.onSettingsFontFaceListener;
 import com.onyx.android.sdk.ui.dialog.DialogGotoPage;
@@ -54,7 +56,6 @@ import com.onyx.android.sdk.ui.dialog.DialogReaderMenu;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.FontSizeProperty;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.LineSpacingProperty;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.RotationScreenProperty;
-import com.onyx.android.sdk.ui.dialog.DialogTOC;
 
 public class ReaderView extends SurfaceView implements android.view.SurfaceHolder.Callback, Settings {
 
@@ -6010,24 +6011,45 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
             public void showTOC()
             {
                 TOCItem toc = doc.getTOC();
-                ArrayList<com.onyx.android.sdk.ui.data.TOCItem> tocItems = new ArrayList<com.onyx.android.sdk.ui.data.TOCItem>();
+                ArrayList<DirectoryItem> tocItems = new ArrayList<DirectoryItem>();
                 for (int i = 0; i < toc.getChildCount(); i++) {
                     TOCItem tocItem = toc.getChild(i);
-                    com.onyx.android.sdk.ui.data.TOCItem item = new com.onyx.android.sdk.ui.data.TOCItem(tocItem.getName(), tocItem.getPage() + 1, tocItem);
+                    DirectoryItem item = new DirectoryItem(tocItem.getName(), tocItem.getPage() + 1, tocItem);
                     tocItems.add(item);
                 }
 
-                DialogTOC dialogTOC = new DialogTOC(mActivity, tocItems);
-                dialogTOC.setOnGoToPageListener(new DialogTOC.onGoToPageListener()
+                BookInfo bookInfo = ReaderView.this.getBookInfo();
+                ArrayList<DirectoryItem> bookmarkItems = new ArrayList<DirectoryItem>();
+                for (int i = 0; i < bookInfo.getBookmarkCount(); i++) {
+                    DirectoryItem bookmarkItem = new DirectoryItem(bookInfo.getBookmark(i).getPosText(), 0, bookInfo.getBookmark(i));
+                    bookmarkItems.add(bookmarkItem);
+                }
+
+                final DialogDirectory.IGotoPageHandler gotoPageHandler = new DialogDirectory.IGotoPageHandler()
                 {
+
                     @Override
-                    public void onGoToPage(com.onyx.android.sdk.ui.data.TOCItem item)
+                    public void jumpTOC(DirectoryItem item)
                     {
                         TOCItem toc = (TOCItem) item.getTag();
                         ReaderView.this.goToPage(toc.getPage() + 1);
                     }
-                });
-                dialogTOC.show();
+
+                    @Override
+                    public void jumpBookmark(DirectoryItem item)
+                    {
+                        ReaderView.this.goToBookmark((Bookmark) item.getTag());
+                    }
+
+                    @Override
+                    public void jumpAnnotation(DirectoryItem item)
+                    {
+                        // TODO Auto-generated method stub
+
+                    }
+                };
+                DialogDirectory dialog = new DialogDirectory(mActivity, tocItems, bookmarkItems, null, gotoPageHandler);
+                dialog.show();
             }
             
             @Override
