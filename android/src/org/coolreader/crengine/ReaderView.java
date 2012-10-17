@@ -42,11 +42,9 @@ import com.onyx.android.sdk.data.cms.OnyxMetadata;
 import com.onyx.android.sdk.data.util.FileUtil;
 import com.onyx.android.sdk.data.util.RefValue;
 import com.onyx.android.sdk.device.EpdController;
-import com.onyx.android.sdk.ui.data.BookmarkItem;
 import com.onyx.android.sdk.ui.data.DirectoryItem;
-import com.onyx.android.sdk.ui.dialog.DialogBookmarks;
-import com.onyx.android.sdk.ui.dialog.DialogBookmarks.onGoToPageListener;
 import com.onyx.android.sdk.ui.dialog.DialogDirectory;
+import com.onyx.android.sdk.ui.dialog.DialogDirectory.DirectoryTab;
 import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings;
 import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings.onSettingsFontFaceListener;
 import com.onyx.android.sdk.ui.dialog.DialogGotoPage;
@@ -6011,46 +6009,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
             @Override
             public void showTOC()
             {
-                TOCItem toc = doc.getTOC();
-                ArrayList<DirectoryItem> tocItems = new ArrayList<DirectoryItem>();
-                for (int i = 0; i < toc.getChildCount(); i++) {
-                    TOCItem tocItem = toc.getChild(i);
-                    DirectoryItem item = new DirectoryItem(tocItem.getName(), tocItem.getPage() + 1, tocItem);
-                    tocItems.add(item);
-                }
-
-                BookInfo bookInfo = ReaderView.this.getBookInfo();
-                ArrayList<DirectoryItem> bookmarkItems = new ArrayList<DirectoryItem>();
-                for (int i = 0; i < bookInfo.getBookmarkCount(); i++) {
-                    DirectoryItem bookmarkItem = new DirectoryItem(bookInfo.getBookmark(i).getPosText(), bookInfo.getBookmark(i).getBookmarkPage(), bookInfo.getBookmark(i));
-                    bookmarkItems.add(bookmarkItem);
-                }
-
-                final DialogDirectory.IGotoPageHandler gotoPageHandler = new DialogDirectory.IGotoPageHandler()
-                {
-
-                    @Override
-                    public void jumpTOC(DirectoryItem item)
-                    {
-                        TOCItem toc = (TOCItem) item.getTag();
-                        ReaderView.this.goToPage(toc.getPage() + 1);
-                    }
-
-                    @Override
-                    public void jumpBookmark(DirectoryItem item)
-                    {
-                        ReaderView.this.goToBookmark((Bookmark) item.getTag());
-                    }
-
-                    @Override
-                    public void jumpAnnotation(DirectoryItem item)
-                    {
-                        // TODO Auto-generated method stub
-
-                    }
-                };
-                DialogDirectory dialog = new DialogDirectory(mActivity, tocItems, bookmarkItems, null, gotoPageHandler);
-                dialog.show();
+                ReaderView.this.showDirectoyDialog(DirectoryTab.toc);
             }
             
             @Override
@@ -6070,24 +6029,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
             @Override
             public void showBookMarks()
             {
-                BookInfo bookInfo = ReaderView.this.getBookInfo();
-                ArrayList<BookmarkItem> bookmarkItems = new ArrayList<BookmarkItem>();
-                for (int i = 0; i < bookInfo.getBookmarkCount(); i++) {
-                    BookmarkItem bookmarkItem = new BookmarkItem(bookInfo.getBookmark(i).getPosText(), bookInfo.getBookmark(i));
-                    bookmarkItems.add(bookmarkItem);
-                }
-
-                DialogBookmarks dialogBookmarks = new DialogBookmarks(mActivity, bookmarkItems);
-                dialogBookmarks.setOnGoToPageListener(new onGoToPageListener()
-                {
-
-                    @Override
-                    public void onGoToPage(BookmarkItem item)
-                    {
-                        ReaderView.this.goToBookmark((Bookmark) item.getTag());
-                    }
-                });
-                dialogBookmarks.show();
+                ReaderView.this.showDirectoyDialog(DirectoryTab.bookmark);
             }
             
             @Override
@@ -6284,6 +6226,12 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
                 // TODO Auto-generated method stub
                 
             }
+
+            @Override
+            public void showAnnotation()
+            {
+                ReaderView.this.showDirectoyDialog(DirectoryTab.annotation);
+            }
         };
 
         mDialogReaderMenu = new DialogReaderMenu(mActivity, menu_handler);
@@ -6328,5 +6276,51 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
         mBookmarkX = ReaderView.this.getWidth() - 80;
         mBookmarkY = 15;
         canvas.drawBitmap(mBookmarkBitmap, mBookmarkX, mBookmarkY, paint);
+    }
+
+    private void showDirectoyDialog(DirectoryTab tab)
+    {
+        TOCItem toc = doc.getTOC();
+        ArrayList<DirectoryItem> tocItems = new ArrayList<DirectoryItem>();
+        for (int i = 0; i < toc.getChildCount(); i++) {
+            TOCItem tocItem = toc.getChild(i);
+            DirectoryItem item = new DirectoryItem(tocItem.getName(), tocItem.getPage() + 1, tocItem);
+            tocItems.add(item);
+        }
+
+        BookInfo bookInfo = ReaderView.this.getBookInfo();
+        ArrayList<DirectoryItem> bookmarkItems = new ArrayList<DirectoryItem>();
+        for (int i = 0; i < bookInfo.getBookmarkCount(); i++) {
+            DirectoryItem bookmarkItem = new DirectoryItem(bookInfo.getBookmark(i).getPosText(), bookInfo.getBookmark(i).getBookmarkPage(), bookInfo.getBookmark(i));
+            bookmarkItems.add(bookmarkItem);
+        }
+
+        ArrayList<DirectoryItem> annotationItems = new ArrayList<DirectoryItem>();
+
+        final DialogDirectory.IGotoPageHandler gotoPageHandler = new DialogDirectory.IGotoPageHandler()
+        {
+
+            @Override
+            public void jumpTOC(DirectoryItem item)
+            {
+                TOCItem toc = (TOCItem) item.getTag();
+                ReaderView.this.goToPage(toc.getPage() + 1);
+            }
+
+            @Override
+            public void jumpBookmark(DirectoryItem item)
+            {
+                ReaderView.this.goToBookmark((Bookmark) item.getTag());
+            }
+
+            @Override
+            public void jumpAnnotation(DirectoryItem item)
+            {
+                // TODO Auto-generated method stub
+
+            }
+        };
+        DialogDirectory dialog = new DialogDirectory(mActivity, tocItems, bookmarkItems, annotationItems, gotoPageHandler, tab);
+        dialog.show();
     }
 }
