@@ -49,7 +49,6 @@ import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings;
 import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings.onSettingsFontFaceListener;
 import com.onyx.android.sdk.ui.dialog.DialogGotoPage;
 import com.onyx.android.sdk.ui.dialog.DialogGotoPage.AcceptNumberListener;
-import com.onyx.android.sdk.ui.dialog.DialogGotoPage.onDismissMenuDialogListener;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.FontSizeProperty;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.LineSpacingProperty;
@@ -6043,7 +6042,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
             {
                 String currentFontFace = mSettings.getProperty(PROP_FONT_FACE, "");
                 DialogFontFaceSettings font_face_dialog =
-                        new DialogFontFaceSettings(mActivity, mEngine.getFontFaceList(), currentFontFace);
+                        new DialogFontFaceSettings(mActivity, mEngine.getFontFaceList(), currentFontFace, mDialogReaderMenu);
                 font_face_dialog.show();
                 font_face_dialog.setOnSettingsFontFaceListener(new onSettingsFontFaceListener()
                 {
@@ -6162,7 +6161,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
             @Override
             public void showGoToPageDialog()
             {
-                DialogGotoPage dialogGotoPage = new DialogGotoPage(mActivity);
+                DialogGotoPage dialogGotoPage = new DialogGotoPage(mActivity, mDialogReaderMenu);
                 dialogGotoPage.setAcceptNumberListener(new AcceptNumberListener()
                 {
 
@@ -6170,15 +6169,6 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
                     public void onAcceptNumber(int num)
                     {
                         ReaderView.this.goToPage(num);
-                        mDialogReaderMenu.dismiss();
-                    }
-                });
-                dialogGotoPage.setOnDismissMenuDialogListener(new onDismissMenuDialogListener()
-                {
-
-                    @Override
-                    public void dismissMenudialog()
-                    {
                         mDialogReaderMenu.dismiss();
                     }
                 });
