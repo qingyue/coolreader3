@@ -2164,10 +2164,16 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	
 	public void toggleFullscreen()
 	{
-		boolean newBool = !mActivity.isFullscreen();
-		String newValue = newBool ? "1" : "0";
-		saveSetting(PROP_APP_FULLSCREEN, newValue);
-		mActivity.setFullscreen(newBool);
+	    boolean newBool = !mActivity.isFullscreen();
+	    String newValue = newBool ? "1" : "0";
+//		saveSetting(PROP_APP_FULLSCREEN, newValue);
+
+
+	    Properties settings = new Properties();
+	    settings.put(PROP_APP_FULLSCREEN, newValue);
+	    setSettings(settings, null, true, true);
+
+	    mActivity.setFullscreen(newBool);
 	}
 	
 	public void showReadingPositionPopup()
@@ -6228,6 +6234,13 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
             public void showAnnotation()
             {
                 ReaderView.this.showDirectoyDialog(DirectoryTab.annotation);
+            }
+
+            @Override
+            public void setScreenDisplay()
+            {
+                toggleFullscreen();
+                mDialogReaderMenu.dismiss();
             }
         };
 
