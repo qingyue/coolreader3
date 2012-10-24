@@ -21,12 +21,13 @@ import org.coolreader.CoolReader;
 import org.coolreader.R;
 
 import android.app.AlertDialog;
-import android.app.Dialog;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.os.Environment;
 import android.util.Log;
 import android.view.View;
+
+import com.onyx.android.sdk.ui.dialog.DialogLoading;
 
 /**
  * CoolReader Engine class.
@@ -353,7 +354,7 @@ public class Engine {
 		return new DelayedProgress(mainProgress, msg, delayMillis);
 	}
 
-	AlertDialog dialog = null;
+	DialogLoading mDialogLoading = null;
 	/**
 	 * Show progress dialog.
 	 * (thread-safe)
@@ -402,8 +403,8 @@ public class Engine {
 	                            mProgress.setMessage(msg);
 //								mProgress.show();
 
-	                            dialog = new AlertDialog.Builder(mActivity).setMessage(R.string.progress_loading).create();
-	                            dialog.show();
+	                            mDialogLoading = new DialogLoading(mActivity, msg);
+	                            mDialogLoading.show();
 
 	                            progressShown = true;
 	                        }
@@ -422,8 +423,8 @@ public class Engine {
 //							progressShown = true;
 //						}
 
-	                    if (!dialog.isShowing()) {
-	                        dialog.show();
+	                    if (!mDialogLoading.isShowing()) {
+	                        mDialogLoading.show();
 	                        progressShown = true;
 	                    }
 	                }
@@ -456,8 +457,8 @@ public class Engine {
 				    progressShown = false;
 					progressIcon = null;
 
-					if (dialog.isShowing()) {
-					    dialog.dismiss();
+					if (mDialogLoading.isShowing()) {
+					    mDialogLoading.dismiss();
 					}
 
 //					if (mProgress.isShowing())
