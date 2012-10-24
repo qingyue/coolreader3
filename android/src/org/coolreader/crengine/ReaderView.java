@@ -6157,6 +6157,13 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
                 // TODO Auto-generated method stub
                 
             }
+            
+            @Override
+            public void toggleFontEmbolden()
+            {
+                // TODO Auto-generated method stub
+                
+            }
 
             @Override
             public void showGoToPageDialog()
