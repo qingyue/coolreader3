@@ -1203,12 +1203,12 @@ public class CoolReader extends Activity
 	public void showView( View view, boolean hideProgress )
 	{
 	    mShowView = view;
-	    if (view != null && (view instanceof ReaderView)) {
-            setFullscreen(true);
-        }
-	    else {
-            setFullscreen(false);
-        }
+//	    if (view != null && (view instanceof ReaderView)) {
+//            setFullscreen(true);
+//        }
+//	    else {
+//            setFullscreen(false);
+//        }
 
 		if ( mBackgroundThread==null )
 			return;
