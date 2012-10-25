@@ -53,7 +53,6 @@ import com.onyx.android.sdk.ui.dialog.DialogReaderMenu;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.FontSizeProperty;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.LineSpacingProperty;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.RotationScreenProperty;
-import com.onyx.android.sdk.ui.util.MenuItemIconProperty;
 
 public class ReaderView extends SurfaceView implements android.view.SurfaceHolder.Callback, Settings {
 
@@ -6242,12 +6241,21 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
                 ReaderView.this.toggleFullscreen();
                 mDialogReaderMenu.dismiss();
             }
+
+            @Override
+            public boolean showZoomSettings()
+            {
+                return false;
+            }
+
+            @Override
+            public boolean isFullscreen()
+            {
+                return mActivity.isFullscreen();
+            }
         };
 
-        MenuItemIconProperty property = new MenuItemIconProperty();
-        property.setIsFullscreen(mActivity.isFullscreen());
-        property.setIsZoom(false);
-        mDialogReaderMenu = new DialogReaderMenu(mActivity, menu_handler, property);
+        mDialogReaderMenu = new DialogReaderMenu(mActivity, menu_handler);
         mDialogReaderMenu.show();
     }
 
