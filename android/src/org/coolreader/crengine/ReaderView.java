@@ -42,6 +42,7 @@ import com.onyx.android.sdk.data.cms.OnyxMetadata;
 import com.onyx.android.sdk.data.util.FileUtil;
 import com.onyx.android.sdk.data.util.RefValue;
 import com.onyx.android.sdk.device.EpdController;
+import com.onyx.android.sdk.device.EpdController.UpdateMode;
 import com.onyx.android.sdk.ui.data.DirectoryItem;
 import com.onyx.android.sdk.ui.dialog.DialogDirectory;
 import com.onyx.android.sdk.ui.dialog.DialogDirectory.DirectoryTab;
@@ -53,6 +54,7 @@ import com.onyx.android.sdk.ui.dialog.DialogReaderMenu;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.FontSizeProperty;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.LineSpacingProperty;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.RotationScreenProperty;
+import com.onyx.android.sdk.ui.dialog.DialogScreenRefresh;
 
 public class ReaderView extends SurfaceView implements android.view.SurfaceHolder.Callback, Settings {
 
@@ -298,6 +300,8 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
     private Properties mSettings = new Properties();
     
     private DialogReaderMenu mDialogReaderMenu = null;
+    
+    private int mPageRenderCount = 0;
 
     public Engine getEngine()
     {
@@ -738,7 +742,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			onAction(actionToRepeat, new Runnable() {
 				public void run() {
 				    L.d("action is compeleted");
-				    EpdController.invalidate(ReaderView.this, EpdController.UpdateMode.GU);
+				    ReaderView.this.epdInvalidateHelper();
 					if ( trackedKeyEvent==event ) {
 						log.v("action is completed : " + actionToRepeat );
 						repeatActionActive = false;
@@ -3851,7 +3855,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 //				invalidate();
 //			}
 //    		if (mOpened)
-			EpdController.invalidate(ReaderView.this, EpdController.UpdateMode.GU);
+		    ReaderView.this.epdInvalidateHelper();
    			mEngine.hideProgress();
    			if ( doneHandler!=null )
    				doneHandler.run();
@@ -6253,6 +6257,13 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
             {
                 return mActivity.isFullscreen();
             }
+
+            @Override
+            public void setScreenRefresh()
+            {
+                DialogScreenRefresh dlg = new DialogScreenRefresh(mActivity);
+                dlg.show();
+            }
         };
 
         mDialogReaderMenu = new DialogReaderMenu(mActivity, menu_handler);
@@ -6343,5 +6354,17 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
         };
         DialogDirectory dialog = new DialogDirectory(mActivity, tocItems, bookmarkItems, annotationItems, gotoPageHandler, tab);
         dialog.show();
+    }
+    
+    private void epdInvalidateHelper()
+    {
+        mPageRenderCount++;
+        if (mPageRenderCount >= DialogScreenRefresh.RENDER_RESET_MAX_TIME) {
+            EpdController.invalidate(this, UpdateMode.GC);
+            mPageRenderCount = 0;
+        }
+        else {
+            EpdController.invalidate(this, UpdateMode.GU);
+        }
     }
 }
