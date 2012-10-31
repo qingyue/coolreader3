@@ -3434,7 +3434,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
             data.setLocation(file.getAbsolutePath());
             data.setNativeAbsolutePath(file.getAbsolutePath());
             data.setSize(file.length());
-            data.setlastModified(file.lastModified());
+            data.setlastModified(new Date(file.lastModified()));
             
             Context ctx = this.getContext();
             if (OnyxCmsCenter.getMetadata(ctx, data)) {
