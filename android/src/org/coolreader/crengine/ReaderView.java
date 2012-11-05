@@ -6232,6 +6232,20 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
                 // TODO Auto-generated method stub
                 
             }
+            
+            @Override
+            public void zoomIn()
+            {
+                // TODO Auto-generated method stub
+                
+            }
+            
+            @Override
+            public void zoomOut()
+            {
+                // TODO Auto-generated method stub
+                
+            }
 
             @Override
             public void showAnnotation()
