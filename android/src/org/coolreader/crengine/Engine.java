@@ -6,22 +6,22 @@ import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 
 import org.coolreader.CoolReader;
 import org.coolreader.R;
 
+import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.os.Environment;
 import android.util.Log;
@@ -37,14 +37,14 @@ import com.onyx.android.sdk.ui.dialog.DialogLoading;
 public class Engine {
 
 	public static final Logger log = L.create("en");
-	
-	private final CoolReader mActivity;
-	private final BackgroundThread mBackgroundThread;
-	private File[] mountedRootsList;
-	private Map<String, String> mountedRootsMap;
-	
-	static final private String LIBRARY_NAME = "cr3engine-45-15";
+	public static final Object lock = new Object();
 
+	
+	static final private String LIBRARY_NAME = "cr3engine-3-1-0";
+
+	private BaseActivity mActivity;
+	
+	
 	// private final View mMainView;
 	// private final ExecutorService mExecutor =
 	// Executors.newFixedThreadPool(1);
@@ -54,7 +54,7 @@ public class Engine {
 	 * 
 	 * @return array of r/w storage roots
 	 */
-	public File[] getStorageDirectories(boolean writableOnly) {
+	public static File[] getStorageDirectories(boolean writableOnly) {
 		Collection<File> res = new HashSet<File>(2);
 		for (File dir : mountedRootsList) {
 			if (dir.isDirectory() && (!writableOnly || dir.canWrite()))
@@ -65,6 +65,12 @@ public class Engine {
 	
 	public Map<String, String> getMountedRootsMap() {
 		return mountedRootsMap;
+	}
+
+	public boolean isRootsMountPoint(String path) {
+		if (mountedRootsMap == null)
+			return false;
+		return mountedRootsMap.containsKey(path);
 	}
 
 	/**
@@ -100,7 +106,7 @@ public class Engine {
 	 * @param createIfNotExists
 	 * @return
 	 */
-	public File[] getDataDirectories(String subdir,
+	public static File[] getDataDirectories(String subdir,
 			boolean createIfNotExists, boolean writableOnly) {
 		File[] roots = getStorageDirectories(writableOnly);
 		ArrayList<File> res = new ArrayList<File>(roots.length);
@@ -124,20 +130,6 @@ public class Engine {
 		public void fail(Exception e);
 	}
 
-	// public static class FatalError extends RuntimeException {
-	// private Engine engine;
-	// private String msg;
-	// public FatalError( Engine engine, String msg )
-	// {
-	// this.engine = engine;
-	// this.msg = msg;
-	// }
-	// public void handle()
-	// {
-	// engine.fatalError(msg);
-	// }
-	// }
-
 	public final static boolean LOG_ENGINE_TASKS = false;
 
 	private class TaskHandler implements Runnable {
@@ -156,15 +148,13 @@ public class Engine {
 				if (LOG_ENGINE_TASKS)
 					log.i("running task.work() "
 							+ task.getClass().getName());
-				if (!initialized)
-					throw new IllegalStateException("Engine not initialized");
 				// run task
 				task.work();
 				if (LOG_ENGINE_TASKS)
 					log.i("exited task.work() "
 							+ task.getClass().getName());
 				// post success callback
-				mBackgroundThread.postGUI(new Runnable() {
+				BackgroundThread.instance().postGUI(new Runnable() {
 					public void run() {
 						if (LOG_ENGINE_TASKS)
 							log.i("running task.done() "
@@ -195,7 +185,7 @@ public class Engine {
 				log.e("exception while running task "
 						+ task.getClass().getName(), e);
 				// post error callback
-				mBackgroundThread.postGUI(new Runnable() {
+				BackgroundThread.instance().postGUI(new Runnable() {
 					public void run() {
 						log.e("running task.fail(" + e.getMessage()
 								+ ") " + task.getClass().getSimpleName()
@@ -217,7 +207,7 @@ public class Engine {
 		if (LOG_ENGINE_TASKS)
 			log.d("executing task " + task.getClass().getSimpleName());
 		TaskHandler taskHandler = new TaskHandler(task);
-		mBackgroundThread.executeBackground(taskHandler);
+		BackgroundThread.instance().executeBackground(taskHandler);
 	}
 
 	/**
@@ -230,7 +220,7 @@ public class Engine {
 		if (LOG_ENGINE_TASKS)
 			log.d("executing task " + task.getClass().getSimpleName());
 		TaskHandler taskHandler = new TaskHandler(task);
-		mBackgroundThread.postBackground(taskHandler);
+		BackgroundThread.instance().postBackground(taskHandler);
 	}
 
 	/**
@@ -243,7 +233,7 @@ public class Engine {
 		execute(new EngineTask() {
 
 			public void done() {
-				mBackgroundThread.postGUI(task);
+				BackgroundThread.instance().postGUI(task);
 			}
 
 			public void fail(Exception e) {
@@ -362,6 +352,7 @@ public class Engine {
 	 * @param msg is progress message
 	 */
 	public void showProgress(final int mainProgress, final String msg) {
+<<<<<<< HEAD
 	    final int progressId = ++nextProgressId;
 	    mProgressMessage = msg;
 	    mProgressPos = mainProgress;
@@ -431,6 +422,68 @@ public class Engine {
 	            }
 	        });
 	    }
+=======
+		final int progressId = ++nextProgressId;
+		mProgressMessage = msg;
+		mProgressPos = mainProgress;
+		if (mainProgress == 10000) {
+			//log.v("mainProgress==10000 : calling hideProgress");
+			hideProgress();
+			return;
+		}
+		log.v("showProgress(" + mainProgress + ", \"" + msg
+				+ "\") is called : " + Thread.currentThread().getName());
+		if (enable_progress) {
+			BackgroundThread.instance().executeGUI(new Runnable() {
+				public void run() {
+					// show progress
+					//log.v("showProgress() - in GUI thread");
+					if (progressId != nextProgressId) {
+						//log.v("showProgress() - skipping duplicate progress event");
+						return;
+					}
+					if (mProgress == null) {
+						//log.v("showProgress() - creating progress window");
+						try {
+							if (mActivity != null && mActivity.isStarted()) {
+								mProgress = new ProgressDialog(mActivity);
+								mProgress
+										.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+								if (progressIcon != null)
+									mProgress.setIcon(progressIcon);
+								else
+									mProgress.setIcon(R.drawable.cr3_logo);
+								mProgress.setMax(10000);
+								mProgress.setCancelable(false);
+								mProgress.setProgress(mainProgress);
+								mProgress
+										.setTitle(mActivity
+												.getResources()
+												.getString(
+														R.string.progress_please_wait));
+								mProgress.setMessage(msg);
+								mProgress.show();
+								progressShown = true;
+							}
+						} catch (Exception e) {
+							Log.e("cr3",
+									"Exception while trying to show progress dialog",
+									e);
+							progressShown = false;
+							mProgress = null;
+						}
+					} else {
+						mProgress.setProgress(mainProgress);
+						mProgress.setMessage(msg);
+						if (!mProgress.isShowing()) {
+							mProgress.show();
+							progressShown = true;
+						}
+					}
+				}
+			});
+		}
+>>>>>>> origin/master
 	}
 
 	/**
@@ -438,6 +491,7 @@ public class Engine {
 	 * (thread-safe)
 	 */
 	public void hideProgress() {
+<<<<<<< HEAD
 	    final int progressId = ++nextProgressId;
 	    log.v("hideProgress() - is called : "
 	            + Thread.currentThread().getName());
@@ -450,6 +504,20 @@ public class Engine {
 //				    Log.v("cr3",
 //                          "hideProgress() - skipping duplicate progress event");
 				    return;
+=======
+		final int progressId = ++nextProgressId;
+		log.v("hideProgress() - is called : "
+				+ Thread.currentThread().getName());
+		// log.v("hideProgress() is called");
+		BackgroundThread.instance().executeGUI(new Runnable() {
+			public void run() {
+				// hide progress
+//				log.v("hideProgress() - in GUI thread");
+				if (progressId != nextProgressId) {
+//					Log.v("cr3",
+//							"hideProgress() - skipping duplicate progress event");
+					return;
+>>>>>>> origin/master
 				}
 				if (mProgress != null) {
 				    // if ( mProgress.isShowing() )
@@ -474,12 +542,12 @@ public class Engine {
 		return progressShown;
 	}
 
-	public String loadFileUtf8(File file) {
+	public static String loadFileUtf8(File file) {
 		try {
 			InputStream is = new FileInputStream(file);
 			return loadResourceUtf8(is);
 		} catch (Exception e) {
-			log.e("cannot load resource from file " + file);
+			log.w("cannot load resource from file " + file);
 			return null;
 		}
 	}
@@ -494,7 +562,7 @@ public class Engine {
 		}
 	}
 
-	public String loadResourceUtf8(InputStream is) {
+	public static String loadResourceUtf8(InputStream is) {
 		try {
 			int available = is.available();
 			if (available <= 0)
@@ -551,91 +619,76 @@ public class Engine {
 		}
 	}
 
+	private static Engine instance;
+
+	public static Engine getInstance(BaseActivity activity) {
+		if (instance == null) {
+			instance = new Engine(activity);
+		} else {
+			instance.setParams(activity);
+		}
+		return instance;
+	}
+	
+	private void setParams(BaseActivity activity) {
+		this.mActivity = activity;
+	}
+
 	/**
 	 * Initialize CoolReader Engine
 	 * 
 	 * @param fontList
 	 *            is array of .ttf font pathnames to load
 	 */
-	public Engine(CoolReader activity, BackgroundThread backgroundThread) {
-		this.mActivity = activity;
-		this.mBackgroundThread = backgroundThread;
-		installLibrary();
-		initMountRoots();
-		// this.mMainView = mainView;
-		//
-//		log.i("Engine() : initializing Engine in UI thread");
-//		if (!initialized) {
-//			installLibrary();
-//		}
-		initializeStarted = true;
-		log.i("Engine() : scheduling init task");
-		BackgroundThread.backgroundExecutor.execute(new Runnable() {
-			public void run() {
-				try {
-					log.i("Engine() : running init() in engine thread");
-					init();
-					// android.view.ViewRoot.getRunQueue().post(new Runnable() {
-					// public void run() {
-					//
-					// }
-					// });
-				} catch (final Exception e) {
-					log.e("Exception while initializing Engine", e);
-					// handler.post(new Runnable() {
-					// public void run() {
-					// // TODO: fatal error
-					// }
-					// });
-				}
-			}
-		});
+	private Engine(BaseActivity activity) {
+		setParams(activity);
 	}
 
-	private native boolean initInternal(String[] fontList);
+	// Native functions
+	private native static boolean initInternal(String[] fontList);
 
-	private native void uninitInternal();
+	private native static void uninitInternal();
 
-	private native String[] getFontFaceListInternal();
+	private native static String[] getFontFaceListInternal();
 
-	private native String[] getArchiveItemsInternal(String arcName); // pairs:
-																		// pathname,
-																		// size
+	private native static String[] getArchiveItemsInternal(String arcName); // pairs: pathname, size
 
-	private native boolean setKeyBacklightInternal(int value);
+	private native static boolean setKeyBacklightInternal(int value);
 
-	private native boolean setCacheDirectoryInternal(String dir, int size);
+	private native static boolean setCacheDirectoryInternal(String dir, int size);
 
-	private native boolean scanBookPropertiesInternal(FileInfo info);
+	private native static boolean scanBookPropertiesInternal(FileInfo info);
 
-	private native byte[] scanBookCoverInternal(String path);
+	private native static byte[] scanBookCoverInternal(String path);
 
-    private static native void suspendLongOperationInternal(); // cancel current long operation in engine thread (swapping to cache file) -- call it from GUI thread
+	private native static void drawBookCoverInternal(Bitmap bmp, byte[] data, String fontFace, String title, String authors, String seriesName, int seriesNumber, int bpp);
+	
+    private native static void suspendLongOperationInternal(); // cancel current long operation in engine thread (swapping to cache file) -- call it from GUI thread
+
     
     public static void suspendLongOperation() {
-    	if (isInitialized()) {
-    		suspendLongOperationInternal();
-    	}
+   		suspendLongOperationInternal();
     }
 	
 	/**
 	 * Checks whether specified directlry or file is symbolic link.
 	 * (thread-safe)
 	 * @param pathName is path to check
-	 * @return true if specified directory or file is link (symlink)
+	 * @return path link points to if specified directory is link (symlink), null for regular file/dir
 	 */
-	public native boolean isLink(String pathName);
+	public native static String isLink(String pathName);
 	
 	private static final int HYPH_NONE = 0;
 	private static final int HYPH_ALGO = 1;
 	private static final int HYPH_DICT = 2;
+	private static final int HYPH_BOOK = 0;
 
 	private native boolean setHyphenationMethod(int type, byte[] dictData);
 
 	public ArrayList<ZipEntry> getArchiveItems(String zipFileName) {
 		final int itemsPerEntry = 2;
 		String[] in;
-		synchronized(this) {
+		synchronized(lock) {
 		    in = getArchiveItemsInternal(zipFileName);
 		}
 		ArrayList<ZipEntry> list = new ArrayList<ZipEntry>();
@@ -650,25 +703,27 @@ public class Engine {
 
 	public static class HyphDict {
 		private static HyphDict[] values = new HyphDict[] {};
-		public final static HyphDict NONE = new HyphDict("NONE", HYPH_NONE, 0, "[None]");
-		public final static HyphDict ALGORITHM = new HyphDict("ALGORITHM", HYPH_ALGO, 0, "[Algorythmic]"); 
-		public final static HyphDict RUSSIAN = new HyphDict("RUSSIAN", HYPH_DICT, R.raw.russian_enus_hyphen, "Russian"); 
-		public final static HyphDict ENGLISH = new HyphDict("ENGLISH", HYPH_DICT, R.raw.english_us_hyphen, "English US"); 
-		public final static HyphDict GERMAN = new HyphDict("GERMAN", HYPH_DICT, R.raw.german_hyphen, "German"); 
-		public final static HyphDict UKRAINIAN = new HyphDict("UKRAINIAN", HYPH_DICT,R.raw.ukrain_hyphen, "Ukrainian"); 
-		public final static HyphDict SPANISH = new HyphDict("SPANISH", HYPH_DICT,R.raw.spanish_hyphen, "Spanish"); 
-		public final static HyphDict FRENCH = new HyphDict("FRENCH", HYPH_DICT,R.raw.french_hyphen, "French"); 
-		public final static HyphDict BULGARIAN = new HyphDict("BULGARIAN", HYPH_DICT, R.raw.bulgarian_hyphen, "Bulgarian"); 
-		public final static HyphDict SWEDISH = new HyphDict("SWEDISH", HYPH_DICT, R.raw.swedish_hyphen, "Swedish"); 
-		public final static HyphDict POLISH = new HyphDict("POLISH", HYPH_DICT, R.raw.polish_hyphen, "Polish");
-		public final static HyphDict HUNGARIAN = new HyphDict("HUNGARIAN", HYPH_DICT, R.raw.hungarian_hyphen, "Hungarian");
-		public final static HyphDict GREEK = new HyphDict("GREEK", HYPH_DICT, R.raw.greek_hyphen, "Greek");
-		
+		public final static HyphDict NONE = new HyphDict("NONE", HYPH_NONE, 0, "[None]", "");
+		public final static HyphDict ALGORITHM = new HyphDict("ALGORITHM", HYPH_ALGO, 0, "[Algorythmic]", ""); 
+		public final static HyphDict BOOK_LANGUAGE = new HyphDict("BOOK LANGUAGE", HYPH_BOOK, 0, "[From Book Language]", ""); 
+		public final static HyphDict RUSSIAN = new HyphDict("RUSSIAN", HYPH_DICT, R.raw.russian_enus_hyphen, "Russian", "ru"); 
+		public final static HyphDict ENGLISH = new HyphDict("ENGLISH", HYPH_DICT, R.raw.english_us_hyphen, "English US", "en"); 
+		public final static HyphDict GERMAN = new HyphDict("GERMAN", HYPH_DICT, R.raw.german_hyphen, "German", "de"); 
+		public final static HyphDict UKRAINIAN = new HyphDict("UKRAINIAN", HYPH_DICT,R.raw.ukrain_hyphen, "Ukrainian", "uk"); 
+		public final static HyphDict SPANISH = new HyphDict("SPANISH", HYPH_DICT,R.raw.spanish_hyphen, "Spanish", "es"); 
+		public final static HyphDict FRENCH = new HyphDict("FRENCH", HYPH_DICT,R.raw.french_hyphen, "French", "fr"); 
+		public final static HyphDict BULGARIAN = new HyphDict("BULGARIAN", HYPH_DICT, R.raw.bulgarian_hyphen, "Bulgarian", "bg"); 
+		public final static HyphDict SWEDISH = new HyphDict("SWEDISH", HYPH_DICT, R.raw.swedish_hyphen, "Swedish", "sv"); 
+		public final static HyphDict POLISH = new HyphDict("POLISH", HYPH_DICT, R.raw.polish_hyphen, "Polish", "pl");
+		public final static HyphDict HUNGARIAN = new HyphDict("HUNGARIAN", HYPH_DICT, R.raw.hungarian_hyphen, "Hungarian", "hu");
+		public final static HyphDict GREEK = new HyphDict("GREEK", HYPH_DICT, R.raw.greek_hyphen, "Greek", "el");
+
 		public final String code;
 		public final int type;
 		public final int resource;
 		public final String name;
 		public final File file;
+		public String language;
 
 		
 		public static HyphDict[] values() {
@@ -684,12 +739,13 @@ public class Engine {
 			values = list;
 		}
 		
-		private HyphDict(String code, int type, int resource, String name) {
+		private HyphDict(String code, int type, int resource, String name, String language) {
 			this.type = type;
 			this.resource = resource;
 			this.name = name;
 			this.file = null;
 			this.code = code;
+			this.language = language;
 			// register in list
 			add(this);
 		}
@@ -700,8 +756,21 @@ public class Engine {
 			this.name = file.getName();
 			this.file = file;
 			this.code = this.name;
+			this.language = "";
 			// register in list
 			add(this);
+		}
+
+		private static HyphDict byLanguage(String language) {
+			if (language != null && !language.trim().equals("")) {
+				for (HyphDict dict : values) {
+					if (dict != BOOK_LANGUAGE) {
+						if (dict.language.equals(language))
+							return dict;
+					}
+				}
+			}
+			return NONE;
 		}
 
 		public static HyphDict byCode(String code) {
@@ -722,6 +791,17 @@ public class Engine {
 		public String toString() {
 			return code;
 		}
+		public String getName() {
+			if (this == BOOK_LANGUAGE) {
+				if (language != null && !language.trim().equals("")) { 
+					return this.name + " (currently: " + this.language + ")";
+				} else {
+					return this.name + " (currently: none)";
+				}
+			} else {
+				return name;
+			}
+		}
 		
 		public static boolean fromFile(File file) {
 			if (file==null || !file.exists() || !file.isFile() || !file.canRead())
@@ -737,17 +817,48 @@ public class Engine {
 	};
 
 	private HyphDict currentHyphDict = null;
+	private String currentHyphLanguage = null;
 
+	public boolean setHyphenationLanguage(final String wanted_language) {
+		String language = getLanguage(wanted_language);
+		log.i("setHyphenationLanguage( " + language + " ) is called");
+		if (language == currentHyphLanguage || currentHyphDict != HyphDict.BOOK_LANGUAGE)
+			return false;
+		currentHyphLanguage = language;
+		HyphDict dict = HyphDict.byLanguage(language);
+		setHyphenationDictionaryInternal(dict);
+		if (dict != null) {
+			HyphDict.BOOK_LANGUAGE.language = language;
+		} else {
+			HyphDict.BOOK_LANGUAGE.language = "";
+		}
+		log.i("setHyphenationLanguage( " + language + " ) set to " + dict);
+		return true;
+	}
+
+	private String getLanguage(final String language) {
+		if (language == null || "".equals(language.trim())) {
+			return "";
+		} else if (language.contains("-")) {
+			return language.substring(0, language.indexOf("-")).toLowerCase();
+		} else {
+			return language.toLowerCase();
+		}
+	}
+		
 	public boolean setHyphenationDictionary(final HyphDict dict) {
 		log.i("setHyphenationDictionary( " + dict + " ) is called");
 		if (currentHyphDict == dict)
 			return false;
 		currentHyphDict = dict;
+		setHyphenationDictionaryInternal(dict);
+		return true;
+	}
+	
+	private void setHyphenationDictionaryInternal(final HyphDict dict) {
 		// byte[] image = loadResourceBytes(R.drawable.tx_old_book);
-		mBackgroundThread.postBackground(new Runnable() {
+		BackgroundThread.instance().postBackground(new Runnable() {
 			public void run() {
-				if (!initialized)
-					throw new IllegalStateException("CREngine is not initialized");
 				byte[] data = null;
 				if (dict.type == HYPH_DICT) {
 					if (dict.resource!=0) {
@@ -756,18 +867,14 @@ public class Engine {
 						data = loadResourceBytes(dict.file);
 					}
 				}
-				log.i("Setting engine's hyphenation dictionary to "
-						+ dict);
+				log.i("Setting engine's hyphenation dictionary to " + dict);
 				setHyphenationMethod(dict.type, data);
 			}
 		});
-		return true;
 	}
 
 	public boolean scanBookProperties(FileInfo info) {
-		if (!initialized)
-			throw new IllegalStateException("CREngine is not initialized");
-		synchronized(this) {
+		synchronized(lock) {
 			long start = android.os.SystemClock.uptimeMillis();
 			boolean res = scanBookPropertiesInternal(info);
 			long duration = android.os.SystemClock.uptimeMillis() - start;
@@ -777,55 +884,56 @@ public class Engine {
 	}
 
 	public byte[] scanBookCover(String path) {
-		synchronized(this) {
-			long start = android.os.SystemClock.uptimeMillis();
+		synchronized(lock) {
+			long start = Utils.timeStamp();
 			byte[] res = scanBookCoverInternal(path);
-			long duration = android.os.SystemClock.uptimeMillis() - start;
+			long duration = Utils.timeInterval(start);
 			L.v("scanBookCover took " + duration + " ms for " + path);
 			return res;
 		}
 	}
 
-	public String[] getFontFaceList() {
-		if (!initialized)
-			throw new IllegalStateException("CREngine is not initialized");
-		synchronized(this) {
+	/**
+	 * Draw book coverpage into bitmap buffer.
+	 * If cover image specified, this image will be drawn (resized to buffer size).
+	 * If no cover image, default coverpage will be drawn, with author, title, series.
+	 * @param bmp is buffer to draw in.
+	 * @param data is coverpage image data bytes, or empty array if no cover image
+	 * @param fontFace is font face to use.
+	 * @param title is book title.
+	 * @param authors is book authors list
+	 * @param seriesName is series name
+	 * @param seriesNumber is series number
+	 * @param bpp is bits per pixel (specify <=8 for eink grayscale dithering)
+	 */
+	public void drawBookCover(Bitmap bmp, byte[] data, String fontFace, String title, String authors, String seriesName, int seriesNumber, int bpp) {
+		synchronized(lock) {
+			long start = Utils.timeStamp();
+			drawBookCoverInternal(bmp, data, fontFace, title, authors, seriesName, seriesNumber, bpp);
+			long duration = Utils.timeInterval(start);
+			L.v("drawBookCover took " + duration + " ms");
+		}
+	}
+
+	public static String[] getFontFaceList() {
+		synchronized(lock) {
 			return getFontFaceListInternal();
 		}
 	}
 
-	private final static int SYSTEM_UI_FLAG_LOW_PROFILE = 1;
-	private final static int SYSTEM_UI_FLAG_VISIBLE = 0;
+	private int currentKeyBacklightLevel = 1;
+	public int getKeyBacklight() {
+		return currentKeyBacklightLevel;
+	}
 	public boolean setKeyBacklight(int value) {
-		// Try ICS way
-		if (DeviceInfo.getSDKLevel() >= DeviceInfo.ICE_CREAM_SANDWICH) {
-			View view = mActivity.getReaderView();
-			Method m;
-			try {
-				m = view.getClass().getMethod("setSystemUiVisibility", int.class);
-				m.invoke(view, value == 0 ? SYSTEM_UI_FLAG_LOW_PROFILE :
-					SYSTEM_UI_FLAG_VISIBLE);
-			} catch (SecurityException e) {
-				// ignore
-			} catch (NoSuchMethodException e) {
-				// ignore
-			} catch (IllegalArgumentException e) {
-				// ignore
-			} catch (IllegalAccessException e) {
-				// ignore
-			} catch (InvocationTargetException e) {
-				// ignore
-			}
-			return true;
-		}
-
+		currentKeyBacklightLevel = value;
 		// thread safe
 		return setKeyBacklightInternal(value);
 	}
 	
 	final static int CACHE_DIR_SIZE = 32000000;
 
-	private String createCacheDir(File baseDir, String subDir) {
+	private static String createCacheDir(File baseDir, String subDir) {
 		String cacheDirName = null;
 		if (baseDir.isDirectory()) {
 			if (baseDir.canWrite()) {
@@ -934,14 +1042,14 @@ public class Engine {
 	private static String CR3_SETTINGS_DIR_NAME;
 	
 	public final static String CACHE_BASE_DIR_NAME = ".cr3"; // "Books"
-	private void initCacheDirectory() {
+	private static void initCacheDirectory() {
 		String cacheDirName = null;
 		// SD card
 		cacheDirName = createCacheDir(
 				Environment.getExternalStorageDirectory(), CACHE_BASE_DIR_NAME);
 		// non-standard SD mount points
 		if (cacheDirName == null) {
-			for ( String dirname : Scanner.SD_MOUNT_POINTS ) {
+			for (String dirname : mountedRootsMap.keySet()) {
 				cacheDirName = createCacheDir(new File(dirname),
 						CACHE_BASE_DIR_NAME);
 				if ( cacheDirName!=null )
@@ -949,42 +1057,50 @@ public class Engine {
 			}
 		}
 		// internal flash
-		if (cacheDirName == null) {
-			File cacheDir = mActivity.getCacheDir();
-			if (!cacheDir.isDirectory())
-				cacheDir.mkdir();
-			cacheDirName = createCacheDir(cacheDir, null);
-			// File cacheDir = mActivity.getDir("cache", Context.MODE_PRIVATE);
-//			if (cacheDir.isDirectory() && cacheDir.canWrite())
-//				cacheDirName = cacheDir.getAbsolutePath();
-		}
+//		if (cacheDirName == null) {
+//			File cacheDir = mActivity.getCacheDir();
+//			if (!cacheDir.isDirectory())
+//				cacheDir.mkdir();
+//			cacheDirName = createCacheDir(cacheDir, null);
+//			// File cacheDir = mActivity.getDir("cache", Context.MODE_PRIVATE);
+////			if (cacheDir.isDirectory() && cacheDir.canWrite())
+////				cacheDirName = cacheDir.getAbsolutePath();
+//		}
 		// set cache directory for engine
 		if (cacheDirName != null) {
 			log.i(cacheDirName
 					+ " will be used for cache, maxCacheSize=" + CACHE_DIR_SIZE);
-			synchronized(this) {
-				setCacheDirectoryInternal(cacheDirName, CACHE_DIR_SIZE);
-			}
+			setCacheDirectoryInternal(cacheDirName, CACHE_DIR_SIZE);
+		} else {
+			log.w("No directory for cache is available!");
 		}
 	}
 
-	private boolean addMountRoot(Map<String, String> list, String pathname, int resourceId)
+	private static boolean addMountRoot(Map<String, String> list, String pathname, int resourceId)
 	{
-		return addMountRoot(list, pathname, mActivity.getResources().getString(resourceId));
+		return addMountRoot(list, pathname, pathname); //mActivity.getResources().getString(resourceId));
 	}
 	
-	private boolean addMountRoot(Map<String, String> list, String path, String name) {
+	private static boolean addMountRoot(Map<String, String> list, String path, String name) {
 		if (list.containsKey(path))
 			return false;
+		for (String key : list.keySet()) {
+			if (path.equals(key)) { // path.startsWith(key + "/")
+				log.w("Skipping duplicate path " + path + " == " + key);
+				return false; // duplicate subpath
+			}
+		}
 		try {
 			File dir = new File(path);
-			if (dir.exists() && dir.isDirectory()) {
-				String[] d = dir.list();
-				if (d!=null && d.length>0) {
+			if (dir.isDirectory()) {
+//				String[] d = dir.list();
+//				if ((d!=null && d.length>0) || dir.canWrite()) {
 					log.i("Adding FS root: " + path + " " + name);
 					list.put(path, name);
-					return true;
-				}
+//					return true;
+//				} else {
+//					log.i("Skipping mount point " + path + " : no files or directories found here, and writing is disabled");
+//				}
 			}
 		} catch (Exception e) {
 			// ignore
@@ -992,95 +1108,188 @@ public class Engine {
 		return false;
 	}
 	
-	private static final String[] SYSTEM_ROOT_PATHS = {"/system", "/data", "/mnt"};
-	private void autoAddRoots(Map<String, String> list, String rootPath, String[] pathsToExclude)
-	{
-		try {
-			File root = new File(rootPath);
-			File[] files = root.listFiles();
-			if ( files!=null ) {
-				for ( File f : files ) {
-					if ( !f.isDirectory() )
-						continue;
-					String fullPath = f.getAbsolutePath();
-					if ( isLink(fullPath) ) {
-						L.d("skipping symlink " + fullPath);
-						continue;
-					}
-					boolean skip = false;
-					for ( String path : pathsToExclude ) {
-						if ( fullPath.startsWith(path) ) {
-							skip = true;
-							break;
+//	private static final String[] SYSTEM_ROOT_PATHS = {"/system", "/data", "/mnt"};
+//	private void autoAddRoots(Map<String, String> list, String rootPath, String[] pathsToExclude)
+//	{
+//		try {
+//			File root = new File(rootPath);
+//			File[] files = root.listFiles();
+//			if ( files!=null ) {
+//				for ( File f : files ) {
+//					if ( !f.isDirectory() )
+//						continue;
+//					String fullPath = f.getAbsolutePath();
+//					if (isLink(fullPath) != null) {
+//						L.d("skipping symlink " + fullPath);
+//						continue;
+//					}
+//					boolean skip = false;
+//					for ( String path : pathsToExclude ) {
+//						if ( fullPath.startsWith(path) ) {
+//							skip = true;
+//							break;
+//						}
+//					}
+//					if ( skip )
+//						continue;
+//					if ( !f.canWrite() ) {
+//						L.i("Path is readonly: " + f.getAbsolutePath());
+//						continue;
+//					}
+//					L.i("Found possible mount point " + f.getAbsolutePath());
+//					addMountRoot(list, f.getAbsolutePath(), f.getAbsolutePath());
+//				}
+//			}
+//		} catch ( Exception e ) {
+//			L.w("Exception while trying to auto add roots");
+//		}
+//	}
+	
+	private static void initMountRoots() {
+		Map<String, String> map = new LinkedHashMap<String, String>();
+
+		// standard external directory
+		String sdpath = Environment.getExternalStorageDirectory().getAbsolutePath();
+		// dirty fix
+		if ("/nand".equals(sdpath) && new File("/sdcard").isDirectory())
+			sdpath = "/sdcard";
+		// main storage
+		addMountRoot(map, sdpath, R.string.dir_sd_card);
+
+		// retrieve list of mount points from system
+		String[] fstabLocations = new String[] {
+			"/system/etc/vold.conf",
+			"/system/etc/vold.fstab",
+			"/etc/vold.conf",
+			"/etc/vold.fstab",
+		};
+		String s = null;
+		String fstabFileName = null;
+		for (String fstabFile : fstabLocations) {
+			fstabFileName = fstabFile;
+			s = loadFileUtf8(new File(fstabFile));
+			if (s != null)
+				log.i("found fstab file " + fstabFile);
+		}
+		if (s == null)
+			log.w("fstab file not found");
+		if ( s!= null) {
+			String[] rows = s.split("\n");
+			int rulesFound = 0;
+			for (String row : rows) {
+				if (row != null && row.startsWith("dev_mount")) {
+					log.d("mount rule: " + row);
+					rulesFound++;
+					String[] cols = Utils.splitByWhitespace(row);
+					if (cols.length >= 5) {
+						String name = Utils.ntrim(cols[1]);
+						String point = Utils.ntrim(cols[2]);
+						String mode = Utils.ntrim(cols[3]);
+						String dev = Utils.ntrim(cols[4]);
+						if (Utils.empty(name) || Utils.empty(point) || Utils.empty(mode) || Utils.empty(dev))
+							continue;
+						String label = null;
+						boolean hasusb = dev.indexOf("usb") >= 0;
+						boolean hasmmc = dev.indexOf("mmc") >= 0;
+						log.i("*** mount point '" + name + "' *** " + point + "  (" + dev + ")");
+						if ("auto".equals(mode)) {
+							// assume AUTO is for externally automount devices
+							if (hasusb)
+								label = "USB Storage";
+							else if (hasmmc)
+								label = "External SD";
+							else
+								label = "External Storage";
+						} else {
+							if (hasmmc)
+								label = "Internal SD";
+							else
+								label = "Internal Storage";
+						}
+						if (!point.equals(sdpath)) {
+							// external SD
+							addMountRoot(map, point, label + " (" + point + ")");
 						}
 					}
-					if ( skip )
-						continue;
-					if ( !f.canWrite() ) {
-						L.i("Path is readonly: " + f.getAbsolutePath());
-						continue;
-					}
-					L.i("Found possible mount point " + f.getAbsolutePath());
-					addMountRoot(list, f.getAbsolutePath(), f.getAbsolutePath());
 				}
 			}
-		} catch ( Exception e ) {
-			L.w("Exception while trying to auto add roots");
+			if (rulesFound == 0)
+				log.w("mount point rules not found in " + fstabFileName);
 		}
-	}
-	
-	private void initMountRoots() {
-		Map<String, String> map = new LinkedHashMap<String, String>();
-		String sdpath = Environment.getExternalStorageDirectory().getAbsolutePath();
-		if ( "/nand".equals(sdpath) && new File("/sdcard").isDirectory() )
-			sdpath = "/sdcard";
-		addMountRoot(map, sdpath, R.string.dir_sd_card);
-		// internal SD card on Nook
-		addMountRoot(map, "/system/media/sdcard", R.string.dir_internal_sd_card);
-		// internal memory
-		addMountRoot(map, "/media", R.string.dir_internal_memory);
-		addMountRoot(map, "/nand", R.string.dir_internal_memory);
-		// internal SD card on PocketBook 701 IQ
-		addMountRoot(map, "/PocketBook701", R.string.dir_internal_sd_card);
-		// external SD
-		addMountRoot(map, "/mnt/extsd", "External SD /mnt/extsd");
-		// external SD
-		addMountRoot(map, "/mnt/external1", "External SD /mnt/external1");
-		// external SD
-		addMountRoot(map, "/mnt/sdcard2", "External SD /mnt/sdcard2");
-		// external SD / Galaxy S
-		addMountRoot(map, "/mnt/ext.sd", "External SD /mnt/ext.sd");
-		addMountRoot(map, "/ext.sd", "External SD /ext.sd");
-		// Asus EEE PAD Transformer
-		addMountRoot(map, "/Removable/MicroSD", "MicroSD");
-		// external SD card Huawei S7
-		addMountRoot(map, "/sdcard2", R.string.dir_sd_card_2);
+
+		// TODO: probably, hardcoded list is not necessary after /etc/vold parsing 
+		String[] knownMountPoints = new String[] {
+			"/system/media/sdcard", // internal SD card on Nook
+			"/media",
+			"/nand",
+			"/PocketBook701", // internal SD card on PocketBook 701 IQ
+			"/mnt/extsd",
+			"/mnt/external1",
+			"/mnt/external_sd",
+			"/mnt/udisk",
+			"/mnt/sdcard2",
+			"/mnt/ext.sd",
+			"/ext.sd",
+			"/extsd",
+			"/sdcard",
+			"/sdcard2",
+			"/mnt/udisk",
+			"/sdcard-ext",
+			"/sd-ext",
+			"/mnt/external1",
+			"/mnt/external2",
+			"/mnt/sdcard1",
+			"/mnt/sdcard2",
+			"/mnt/usb_storage",
+			"/mnt/external_sd",
+			"/emmc",
+			"/external",
+			"/Removable/SD",
+			"/Removable/MicroSD",
+			"/Removable/USBDisk1", 
+		};
+		for (String point : knownMountPoints) {
+			String link = isLink(point);
+			if (link != null) {
+				log.d("standard mount point path is link: " + point + " > " + link);
+				addMountRoot(map, link, link);
+			} else {
+				addMountRoot(map, point, point);
+			}
+		}
 		
 		// auto detection
-		autoAddRoots(map, "/", SYSTEM_ROOT_PATHS);
-		autoAddRoots(map, "/mnt", new String[] {});
+		//autoAddRoots(map, "/", SYSTEM_ROOT_PATHS);
+		//autoAddRoots(map, "/mnt", new String[] {});
 		
 		mountedRootsMap = map;
 		Collection<File> list = new ArrayList<File>();
+		log.i("Mount ROOTS:");
 		for (String f : map.keySet()) {
-			list.add(new File(f));
+			File path = new File(f);
+			list.add(path);
+			String label = map.get(f);
+			log.i("*** " + f + " '" + label + "' isDirectory=" + path.isDirectory() + " canRead=" + path.canRead() + " canWrite=" + path.canRead() + " isLink=" + isLink(f));
 		}
 		mountedRootsList = list.toArray(new File[] {});
+		pathCorrector = new MountPathCorrector(mountedRootsList);
+
+		for (String point : knownMountPoints) {
+			String link = isLink(point);
+			if (link != null)
+				pathCorrector.addRootLink(point, link);
+		}
+		
+		Log.i("cr3", "Root list: " + list + ", root links: " + pathCorrector);
+//		testPathNormalization("/sdcard/books/test.fb2");
+//		testPathNormalization("/mnt/sdcard/downloads/test.fb2");
+//		testPathNormalization("/mnt/sd/dir/test.fb2");
 	}
 	
-	private void init() throws IOException {
-		if (initialized)
-			throw new IllegalStateException("Already initialized");
-		String[] fonts = findFonts();
-		findExternalHyphDictionaries();
-		synchronized(this) {
-			if (!initInternal(fonts))
-				throw new IOException("Cannot initialize CREngine JNI");
-		}
-		// Initialization of cache directory
-		initCacheDirectory();
-		initialized = true;
-	}
+//	private void testPathNormalization(String path) {
+//		Log.i("cr3", "normalization: " + path + " => " + normalizePathUsingRootLinks(new File(path)));
+//	}
+	
 
 	// public void waitTasksCompletion()
 	// {
@@ -1096,36 +1305,25 @@ public class Engine {
 	 * Uninitialize engine.
 	 */
 	public void uninit() {
-		log.i("Engine.uninit() is called");
-		BackgroundThread.backgroundExecutor.execute(new Runnable() {
-			public void run() {
-				log.i("Engine.uninit() : in background thread");
-				if (initialized) {
-					synchronized(this) {
-						uninitInternal();
-					}
-					initialized = false;
-				}
-			}
-		});
+//		log.i("Engine.uninit() is called for " + hashCode());
+//		if (initialized) {
+//			synchronized(this) {
+//				uninitInternal();
+//			}
+//			initialized = false;
+//		}
+		instance = null;
 	}
 
 	protected void finalize() throws Throwable {
-		log.i("Engine.finalize() is called");
+		log.i("Engine.finalize() is called for " + hashCode());
 		// if ( initialized ) {
 		// //uninitInternal();
 		// initialized = false;
 		// }
 	}
 
-	public static boolean isInitialized() {
-		return initialized;
-	}
-	
-	static private boolean initialized = false;
-	static private boolean initializeStarted = false;
-
-	private String[] findFonts() {
+	private static String[] findFonts() {
 		ArrayList<File> dirs = new ArrayList<File>();
 		File[] dataDirs = getDataDirectories("fonts", false, false);
 		for (File dir : dataDirs)
@@ -1158,16 +1356,17 @@ public class Engine {
 				}
 			}
 		}
+		Collections.sort(fontPaths);
 		return fontPaths.toArray(new String[] {});
 	}
 
 	private String SO_NAME = "lib" + LIBRARY_NAME + ".so";
-	private boolean force_install_library = false;
+//	private static boolean force_install_library = false;
 
-	private void installLibrary() {
+	private static void installLibrary() {
 		try {
-			if (force_install_library)
-				throw new Exception("forcing install");
+//			if (force_install_library)
+//				throw new Exception("forcing install");
 			// try loading library w/o manual installation
 			log.i("trying to load library " + LIBRARY_NAME
 					+ " w/o installation");
@@ -1176,37 +1375,38 @@ public class Engine {
 			//log.i("trying execute native method ");
 			//setHyphenationMethod(HYPH_NONE, new byte[] {});
 			log.i(LIBRARY_NAME + " loaded successfully");
-		} catch (Exception ee) {
-			log.i(SO_NAME + " not found using standard paths, will install manually");
-			File sopath = mActivity.getDir("libs", Context.MODE_PRIVATE);
-			File soname = new File(sopath, SO_NAME);
-			try {
-				sopath.mkdirs();
-				File zip = new File(mActivity.getPackageCodePath());
-				ZipFile zipfile = new ZipFile(zip);
-				ZipEntry zipentry = zipfile.getEntry("lib/armeabi/" + SO_NAME);
-				if (!soname.exists() || zipentry.getSize() != soname.length()) {
-					InputStream is = zipfile.getInputStream(zipentry);
-					OutputStream os = new FileOutputStream(soname);
-					Log.i("cr3",
-							"Installing JNI library "
-									+ soname.getAbsolutePath());
-					final int BUF_SIZE = 0x10000;
-					byte[] buf = new byte[BUF_SIZE];
-					int n;
-					while ((n = is.read(buf)) > 0)
-						os.write(buf, 0, n);
-					is.close();
-					os.close();
-				} else {
-					log.i("JNI library " + soname.getAbsolutePath()
-							+ " is up to date");
-				}
-				System.load(soname.getAbsolutePath());
-				//setHyphenationMethod(HYPH_NONE, new byte[] {});
+//		} catch (Exception ee) {
+//			log.i(SO_NAME + " not found using standard paths, will install manually");
+//			File sopath = mActivity.getDir("libs", Context.MODE_PRIVATE);
+//			File soname = new File(sopath, SO_NAME);
+//			try {
+//				sopath.mkdirs();
+//				File zip = new File(mActivity.getPackageCodePath());
+//				ZipFile zipfile = new ZipFile(zip);
+//				ZipEntry zipentry = zipfile.getEntry("lib/armeabi/" + SO_NAME);
+//				if (!soname.exists() || zipentry.getSize() != soname.length()) {
+//					InputStream is = zipfile.getInputStream(zipentry);
+//					OutputStream os = new FileOutputStream(soname);
+//					Log.i("cr3",
+//							"Installing JNI library "
+//									+ soname.getAbsolutePath());
+//					final int BUF_SIZE = 0x10000;
+//					byte[] buf = new byte[BUF_SIZE];
+//					int n;
+//					while ((n = is.read(buf)) > 0)
+//						os.write(buf, 0, n);
+//					is.close();
+//					os.close();
+//				} else {
+//					log.i("JNI library " + soname.getAbsolutePath()
+//							+ " is up to date");
+//				}
+//				System.load(soname.getAbsolutePath());
+//				//setHyphenationMethod(HYPH_NONE, new byte[] {});
 			} catch (Exception e) {
 				log.e("cannot install " + LIBRARY_NAME + " library", e);
-			}
+				throw new RuntimeException("Cannot load JNI library");
+//			}
 		}
 	}
 
@@ -1218,11 +1418,10 @@ public class Engine {
 					R.drawable.bg_paper1),
 			new BackgroundTextureInfo("bg_paper1_dark", "Paper 1 (dark)",
 					R.drawable.bg_paper1_dark),
+			new BackgroundTextureInfo("tx_wood", "Wood", 
+					DeviceInfo.getSDKLevel() == 3 ? R.drawable.tx_wood_v3 : R.drawable.tx_wood),
 			new BackgroundTextureInfo("tx_wood_dark", "Wood (dark)",
-					R.drawable.tx_wood_dark),
-			new BackgroundTextureInfo("tx_wood", "Wood", R.drawable.tx_wood),
-			new BackgroundTextureInfo("tx_wood_dark", "Wood (dark)",
-					R.drawable.tx_wood_dark),
+					DeviceInfo.getSDKLevel() == 3 ? R.drawable.tx_wood_dark_v3 : R.drawable.tx_wood_dark),
 			new BackgroundTextureInfo("tx_fabric", "Fabric",
 					R.drawable.tx_fabric),
 			new BackgroundTextureInfo("tx_fabric_dark", "Fabric (dark)",
@@ -1286,7 +1485,7 @@ public class Engine {
 		return list.toArray(new BackgroundTextureInfo[] {});
 	}
 
-	public void findHyphDictionariesFromDirectory(File dir) {
+	public static void findHyphDictionariesFromDirectory(File dir) {
 		for (File f : dir.listFiles()) {
 			if (!f.isDirectory()) {
 				if (HyphDict.fromFile(f))
@@ -1295,7 +1494,7 @@ public class Engine {
 		}
 	}
 
-	public void findExternalHyphDictionaries() {
+	public static void findExternalHyphDictionaries() {
 		for (File d : getStorageDirectories(false)) {
 			File base = new File(d, ".cr3");
 			if (!base.isDirectory())
@@ -1366,4 +1565,65 @@ public class Engine {
 		return NO_TEXTURE;
 	}
 
+	/**
+	 * Create progress dialog control.
+	 * @param resourceId is string resource Id of dialog title, 0 to disable progress
+	 * @return created control object.
+	 */
+	public ProgressControl createProgress(int resourceId) {
+		return new ProgressControl(resourceId);
+	}
+	private static final int PROGRESS_UPDATE_INTERVAL = DeviceInfo.EINK_SCREEN ? 4000 : 500;
+	private static final int PROGRESS_SHOW_INTERVAL = DeviceInfo.EINK_SCREEN ? 4000 : 1500;
+	public class ProgressControl {
+		private final int resourceId;
+		private long createTime = Utils.timeStamp();
+		private long lastUpdateTime;
+		private boolean shown;
+		private ProgressControl(int resourceId) {
+			this.resourceId = resourceId;
+		}
+		public void hide() {
+			if (resourceId == 0)
+				return; // disabled
+			if (shown)
+				hideProgress();
+			shown = false;
+		}
+		public void setProgress(int percent) {
+			if (resourceId == 0)
+				return; // disabled
+			if (Utils.timeInterval(createTime) < PROGRESS_SHOW_INTERVAL)
+				return;
+			if (Utils.timeInterval(lastUpdateTime) < PROGRESS_UPDATE_INTERVAL)
+				return;
+			shown = true;
+			lastUpdateTime = Utils.timeStamp();
+			showProgress(percent, resourceId);
+		}
+	}
+
+	public MountPathCorrector getPathCorrector() {
+		return pathCorrector;
+	}
+
+	private static File[] mountedRootsList;
+	private static Map<String, String> mountedRootsMap;
+	private static MountPathCorrector pathCorrector;
+	private static String[] mFonts;
+
+	// static initialization
+	static {
+		log.i("Engine() : static initialization");
+		installLibrary();
+		initMountRoots();
+		mFonts = findFonts();
+		findExternalHyphDictionaries();
+		if (!initInternal(mFonts)) {
+			log.i("Engine.initInternal failed!");
+			throw new RuntimeException("Cannot initialize CREngine JNI");
+		}
+		initCacheDirectory();
+		log.i("Engine() : initialization done");
+	}
 }

@@ -11,6 +11,7 @@
 	    android:layout_width="fill_parent"
 	    android:layout_height="wrap_content"
 	    android:minHeight="?android:attr/listPreferredItemHeight"
+        android:minWidth="?android:attr/listPreferredItemHeight"
 	    android:gravity="center_vertical"
 	    android:paddingRight="?android:attr/scrollbarSize"
 	    >
@@ -23,6 +24,13 @@
             android:layout_marginRight="5dip"
             android:layout_centerVertical="true"
             android:src="@drawable/cr3_button_prev"
+<<<<<<< HEAD
+=======
+            android:focusable="false"
+            android:focusableInTouchMode="false"
+            android:background="@null"
+            android:contentDescription="@string/dlg_button_back"/>
+>>>>>>> origin/master
             />
         <TextView android:id="@+id/base_dlg_title"
             style="@style/TextAppearance.Medium"
@@ -51,6 +59,7 @@
             android:focusable="false"
             android:focusableInTouchMode="false"
             android:background="@null"
+            android:contentDescription="@string/dlg_button_ok"/>
             />
         <ImageButton android:id="@+id/base_dlg_btn_negative"
             android:layout_width="wrap_content"
@@ -63,6 +72,7 @@
             android:focusable="false"
             android:focusableInTouchMode="false"
             android:background="@null"
+            android:contentDescription="@string/dlg_button_cancel"/>
             />
     </LinearLayout>
     <FrameLayout android:id="@+id/base_dialog_content_view"

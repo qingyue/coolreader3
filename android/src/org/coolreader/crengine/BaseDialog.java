@@ -1,6 +1,5 @@
 package org.coolreader.crengine;
 
-import org.coolreader.CoolReader;
 import org.coolreader.R;
 
 import android.app.Dialog;
@@ -26,28 +25,38 @@ public class BaseDialog extends Dialog {
 	View layoutView;
 	ViewGroup buttonsLayout;
 	ViewGroup contentsLayout;
-	CoolReader activity;
+	BaseActivity activity;
 	String title;
 	boolean needCancelButton;
 	int positiveButtonImage;
+	int positiveButtonContentDescriptionId = R.string.dlg_button_ok;
 	int negativeButtonImage;
-	public void setPositiveButtonImage(int id) {
-		positiveButtonImage = id;
+	int negativeButtonContentDescriptionId = R.string.action_go_back;
+	int thirdButtonImage;
+	int thirdButtonContentDescriptionId;
+	public void setPositiveButtonImage(int imageId, int descriptionId) {
+		positiveButtonImage = imageId;
+		positiveButtonContentDescriptionId = descriptionId;
 	}
-	public void setNegativeButtonImage(int id) {
-		negativeButtonImage = id;
+	public void setNegativeButtonImage(int imageId, int descriptionId) {
+		negativeButtonImage = imageId;
+		negativeButtonContentDescriptionId = descriptionId;
+	}
+	public void setThirdButtonImage(int imageId, int descriptionId) {
+		thirdButtonImage = imageId;
+		thirdButtonContentDescriptionId = descriptionId;
 	}
 	
 	public static final boolean DARK_THEME = !DeviceInfo.FORCE_LIGHT_THEME;
-	public BaseDialog( CoolReader activity )
+	public BaseDialog( BaseActivity activity )
 	{
 		this( activity, "", false, false );
 	}
-	public BaseDialog( CoolReader activity, String title, boolean showNegativeButton, boolean windowed )
+	public BaseDialog( BaseActivity activity, String title, boolean showNegativeButton, boolean windowed )
 	{
 		this( activity, title, showNegativeButton, activity.isFullscreen(), activity.isNightMode(), windowed );
 	}
-	public BaseDialog( CoolReader activity, String title, boolean showNegativeButton, boolean fullscreen, boolean dark, boolean windowed )
+	public BaseDialog( BaseActivity activity, String title, boolean showNegativeButton, boolean fullscreen, boolean dark, boolean windowed )
 	{
 		//super(activity, fullscreen ? R.style.Dialog_Fullscreen : R.style.Dialog_Normal);
 		//super(activity, fullscreen ? R.style.Dialog_Fullscreen : android.R.style.Theme_Dialog); //android.R.style.Theme_Light_NoTitleBar_Fullscreen : android.R.style.Theme_Light
@@ -63,17 +72,20 @@ public class BaseDialog extends Dialog {
 		this.needCancelButton = showNegativeButton;
 		getWindow().requestFeature(Window.FEATURE_NO_TITLE);
 //		requestWindowFeature(Window.FEATURE_OPTIONS_PANEL);
-		WindowManager.LayoutParams lp = new WindowManager.LayoutParams();
-		lp.alpha = 1.0f;
-		lp.dimAmount = 0.0f;
-		lp.format = PixelFormat.RGB_565;
-		lp.gravity = Gravity.CENTER_HORIZONTAL | Gravity.CENTER_VERTICAL;
-		lp.horizontalMargin = 0;
-		lp.verticalMargin = 0;
-		lp.windowAnimations = 0;
-		lp.layoutAnimationParameters = null;
-		//lp.memoryType = WindowManager.LayoutParams.MEMORY_TYPE_PUSH_BUFFERS;
-		getWindow().setAttributes(lp);
+		if (!DeviceInfo.EINK_SCREEN) {
+			WindowManager.LayoutParams lp = new WindowManager.LayoutParams();
+			lp.alpha = 1.0f;
+			lp.dimAmount = 0.0f;
+			if (!DeviceInfo.EINK_SCREEN)
+				lp.format = DeviceInfo.PIXEL_FORMAT;
+			lp.gravity = Gravity.CENTER_HORIZONTAL | Gravity.CENTER_VERTICAL;
+			lp.horizontalMargin = 0;
+			lp.verticalMargin = 0;
+			lp.windowAnimations = 0;
+			lp.layoutAnimationParameters = null;
+			//lp.memoryType = WindowManager.LayoutParams.MEMORY_TYPE_PUSH_BUFFERS;
+			getWindow().setAttributes(lp);
+		}
 		Log.i("cr3", "BaseDialog.window=" + getWindow());
         setCancelable(true);
         setOnDismissListener(new OnDismissListener() {
@@ -108,6 +120,12 @@ public class BaseDialog extends Dialog {
 		dismiss();
 	}
 
+	protected void onThirdButtonClick()
+	{
+		// override it
+		dismiss();
+	}
+
 	protected void createButtonsPane( ViewGroup parent, ViewGroup layout )
 	{
 		//getWindow().getDecorView().getWidth()
@@ -116,15 +134,36 @@ public class BaseDialog extends Dialog {
 		ImageButton backButton = (ImageButton)layout.findViewById(R.id.base_dlg_btn_back);
 		if (positiveButtonImage != 0) {
 			positiveButton.setImageResource(positiveButtonImage);
+			if (positiveButtonContentDescriptionId != 0)
+				Utils.setContentDescription(positiveButton, getContext().getString(positiveButtonContentDescriptionId));
 			//backButton.setImageResource(positiveButtonImage);
 		}
+		if (thirdButtonImage != 0) {
+			negativeButton.setImageResource(thirdButtonImage);
+			if (thirdButtonContentDescriptionId != 0)
+				Utils.setContentDescription(negativeButton, getContext().getString(thirdButtonContentDescriptionId));
+		}
 		if (negativeButtonImage != 0) {
-			negativeButton.setImageResource(negativeButtonImage);
+			if (thirdButtonImage == 0) {
+				negativeButton.setImageResource(negativeButtonImage);
+				if (negativeButtonContentDescriptionId != 0)
+					Utils.setContentDescription(negativeButton, getContext().getString(negativeButtonContentDescriptionId));
+			}
 			backButton.setImageResource(negativeButtonImage);
+			if (negativeButtonContentDescriptionId != 0)
+				Utils.setContentDescription(backButton, getContext().getString(negativeButtonContentDescriptionId));
 		}
 		if (needCancelButton) {
 			//layout.removeView(backButton);
-			layout.removeView(negativeButton);
+			if (thirdButtonImage == 0) {
+				layout.removeView(negativeButton);
+			} else {
+				negativeButton.setOnClickListener(new View.OnClickListener() {
+					public void onClick(View v) {
+						onThirdButtonClick();
+					}
+				});
+			}
 			positiveButton.setOnClickListener(new View.OnClickListener() {
 				public void onClick(View v) {
 					onPositiveButtonClick();
@@ -159,12 +198,12 @@ public class BaseDialog extends Dialog {
 					if (event.getAction() == MotionEvent.ACTION_DOWN) {
 						int x = (int)event.getX();
 						int dx = v.getWidth();
-						if (x < dx / 2) {
+						if (x < dx / 3) {
 							if (needCancelButton)
 								onNegativeButtonClick();
 							else
 								onPositiveButtonClick();
-						} else {
+						} else if (x > dx * 2 / 3) {
 							onPositiveButtonClick();
 						}
 						return true;
@@ -296,6 +335,7 @@ public class BaseDialog extends Dialog {
 	
 	@Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
+		activity.onUserActivity();
 		if (keyCode == KeyEvent.KEYCODE_BACK) {
 			onNegativeButtonClick();
 			return true;

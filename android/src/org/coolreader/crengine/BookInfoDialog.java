@@ -14,7 +14,7 @@ import android.widget.TableRow;
 import android.widget.TextView;
 
 public class BookInfoDialog extends BaseDialog {
-	private final CoolReader mCoolReader;
+	private final BaseActivity mCoolReader;
 	private final LayoutInflater mInflater; 
 	private Map<String, Integer> mLabelMap;
 	private void fillMap() {
@@ -39,6 +39,7 @@ public class BookInfoDialog extends BaseDialog {
 		mLabelMap.put("book.authors", R.string.book_info_book_authors);
 		mLabelMap.put("book.title", R.string.book_info_book_title);
 		mLabelMap.put("book.series", R.string.book_info_book_series_name);
+		mLabelMap.put("book.language", R.string.book_info_book_language);
 	}
 	
 	private void addItem(TableLayout table, String item) {
@@ -73,7 +74,7 @@ public class BookInfoDialog extends BaseDialog {
 		table.addView(tableRow);
 	}
 	
-	public BookInfoDialog( CoolReader activity, Collection<String> items)
+	public BookInfoDialog( BaseActivity activity, Collection<String> items)
 	{
 		super(activity);
 		mCoolReader = activity;
