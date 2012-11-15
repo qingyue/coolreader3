@@ -44,6 +44,7 @@ import com.onyx.android.sdk.data.util.RefValue;
 import com.onyx.android.sdk.device.EpdController;
 import com.onyx.android.sdk.device.EpdController.UpdateMode;
 import com.onyx.android.sdk.ui.data.DirectoryItem;
+import com.onyx.android.sdk.ui.dialog.AnnotationItem;
 import com.onyx.android.sdk.ui.dialog.DialogDirectory;
 import com.onyx.android.sdk.ui.dialog.DialogDirectory.DirectoryTab;
 import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings;
@@ -6341,7 +6342,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
             bookmarkItems.add(bookmarkItem);
         }
 
-        ArrayList<DirectoryItem> annotationItems = new ArrayList<DirectoryItem>();
+        ArrayList<AnnotationItem> annotationItems = new ArrayList<AnnotationItem>();
 
         final DialogDirectory.IGotoPageHandler gotoPageHandler = new DialogDirectory.IGotoPageHandler()
         {
