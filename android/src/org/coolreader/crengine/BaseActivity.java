@@ -660,7 +660,7 @@ public class BaseActivity extends Activity implements Settings {
 		//BackgroundThread.instance().postGUI(task, 10);
     }
     
-    private void updateBacklightBrightness(float b) {
+    public void updateBacklightBrightness(float b) {
         Window wnd = getWindow();
         if (wnd != null) {
 	    	LayoutParams attrs =  wnd.getAttributes();

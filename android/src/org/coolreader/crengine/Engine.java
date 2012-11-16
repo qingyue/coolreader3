@@ -352,77 +352,6 @@ public class Engine {
 	 * @param msg is progress message
 	 */
 	public void showProgress(final int mainProgress, final String msg) {
-<<<<<<< HEAD
-	    final int progressId = ++nextProgressId;
-	    mProgressMessage = msg;
-	    mProgressPos = mainProgress;
-	    if (mainProgress == 10000) {
-	        //log.v("mainProgress==10000 : calling hideProgress");
-	        hideProgress();
-	        return;
-	    }
-	    log.v("showProgress(" + mainProgress + ", \"" + msg
-	            + "\") is called : " + Thread.currentThread().getName());
-	    if (enable_progress) {
-	        mBackgroundThread.executeGUI(new Runnable() {
-	            public void run() {
-	                // show progress
-	                //log.v("showProgress() - in GUI thread");
-	                if (progressId != nextProgressId) {
-	                    //log.v("showProgress() - skipping duplicate progress event");
-	                    return;
-	                }
-	                if (mProgress == null) {
-	                    //log.v("showProgress() - creating progress window");
-	                    try {
-	                        if (mActivity != null && mActivity.isStarted()) {
-	                            mProgress = new ProgressDialog(mActivity);
-	                            mProgress
-	                            .setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-	                            if (progressIcon != null)
-	                                mProgress.setIcon(progressIcon);
-	                            else
-	                                mProgress.setIcon(R.drawable.cr3_logo);
-	                            mProgress.setMax(10000);
-	                            mProgress.setCancelable(false);
-	                            mProgress.setProgress(mainProgress);
-	                            mProgress
-	                            .setTitle(mActivity
-	                                    .getResources()
-	                                    .getString(
-	                                            R.string.progress_please_wait));
-	                            mProgress.setMessage(msg);
-//								mProgress.show();
-
-	                            mDialogLoading = new DialogLoading(mActivity, msg);
-	                            mDialogLoading.show();
-
-	                            progressShown = true;
-	                        }
-	                    } catch (Exception e) {
-	                        Log.e("cr3",
-	                                "Exception while trying to show progress dialog",
-	                                e);
-	                        progressShown = false;
-	                        mProgress = null;
-	                    }
-	                } else {
-	                    mProgress.setProgress(mainProgress);
-	                    mProgress.setMessage(msg);
-//						if (!mProgress.isShowing()) {
-//							mProgress.show();
-//							progressShown = true;
-//						}
-
-	                    if (!mDialogLoading.isShowing()) {
-	                        mDialogLoading.show();
-	                        progressShown = true;
-	                    }
-	                }
-	            }
-	        });
-	    }
-=======
 		final int progressId = ++nextProgressId;
 		mProgressMessage = msg;
 		mProgressPos = mainProgress;
@@ -483,7 +412,6 @@ public class Engine {
 				}
 			});
 		}
->>>>>>> origin/master
 	}
 
 	/**
@@ -491,20 +419,6 @@ public class Engine {
 	 * (thread-safe)
 	 */
 	public void hideProgress() {
-<<<<<<< HEAD
-	    final int progressId = ++nextProgressId;
-	    log.v("hideProgress() - is called : "
-	            + Thread.currentThread().getName());
-	    // log.v("hideProgress() is called");
-	    mBackgroundThread.executeGUI(new Runnable() {
-		    public void run() {
-			    // hide progress
-//			    log.v("hideProgress() - in GUI thread");
-			    if (progressId != nextProgressId) {
-//				    Log.v("cr3",
-//                          "hideProgress() - skipping duplicate progress event");
-				    return;
-=======
 		final int progressId = ++nextProgressId;
 		log.v("hideProgress() - is called : "
 				+ Thread.currentThread().getName());
@@ -517,7 +431,6 @@ public class Engine {
 //					Log.v("cr3",
 //							"hideProgress() - skipping duplicate progress event");
 					return;
->>>>>>> origin/master
 				}
 				if (mProgress != null) {
 				    // if ( mProgress.isShowing() )

@@ -16,9 +16,12 @@ import org.coolreader.crengine.CRRootView;
 import org.coolreader.crengine.CRToolBar;
 import org.coolreader.crengine.CRToolBar.OnActionHandler;
 import org.coolreader.crengine.DeviceInfo;
+import org.coolreader.crengine.EinkScreen;
 import org.coolreader.crengine.Engine;
+import org.coolreader.crengine.Engine.HyphDict;
 import org.coolreader.crengine.FileBrowser;
 import org.coolreader.crengine.FileInfo;
+import org.coolreader.crengine.History;
 import org.coolreader.crengine.History.BookInfoLoadedCallack;
 import org.coolreader.crengine.InterfaceTheme;
 import org.coolreader.crengine.L;
@@ -30,9 +33,12 @@ import org.coolreader.crengine.Properties;
 import org.coolreader.crengine.ReaderAction;
 import org.coolreader.crengine.ReaderView;
 import org.coolreader.crengine.ReaderViewLayout;
+import org.coolreader.crengine.Scanner;
 import org.coolreader.crengine.Services;
 import org.coolreader.crengine.TTS;
 import org.coolreader.crengine.TTS.OnTTSCreatedListener;
+import org.coolreader.crengine.Utils;
+import org.coolreader.db.MainDB;
 import org.coolreader.donations.BillingService;
 import org.coolreader.donations.BillingService.RequestPurchase;
 import org.coolreader.donations.BillingService.RestoreTransactions;
@@ -62,10 +68,17 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Debug;
 import android.os.Handler;
+import android.os.PowerManager;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
+import android.view.WindowManager.LayoutParams;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 
 public class CoolReader extends BaseActivity
@@ -78,18 +91,22 @@ public class CoolReader extends BaseActivity
 	private View mBrowserTitleBar;
 	private CRToolBar mBrowserToolBar;
 	private BrowserViewLayout mBrowserFrame;
-	CRRootView mHomeFrame;
+	private CRRootView mHomeFrame;
 	private Engine mEngine;
-	//View startupView;
-<<<<<<< HEAD
-	History mHistory;
-	CRDB mDB;
+    private Scanner mScanner;
+    private FrameLayout mFrame;
+
+
+    //CRDB mDB;
+    private ViewGroup mCurrentFrame;
+	private History mHistory;
+	private MainDB mDB;
 	private BackgroundThread mBackgroundThread;
 	private View mBackgroundView = null;
-	
-	public CoolReader() {
-	    brightnessHackError = false; //DeviceInfo.SAMSUNG_BUTTONS_HIGHLIGHT_PATCH;
-	}
+
+//	public CoolReader() {
+//	    brightnessHackError = false; //DeviceInfo.SAMSUNG_BUTTONS_HIGHLIGHT_PATCH;
+//	}
 	
 	public Scanner getScanner()
 	{
@@ -113,13 +130,7 @@ public class CoolReader extends BaseActivity
 	{
 		return mReaderView;
 	}
-=======
-	//CRDB mDB;
-	private ViewGroup mCurrentFrame;
->>>>>>> origin/master
-	
-	
-<<<<<<< HEAD
+
 	int screenOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR;
 	public void applyScreenOrientation( Window wnd )
 	{
@@ -146,7 +157,7 @@ public class CoolReader extends BaseActivity
 		case ActivityInfo_SCREEN_ORIENTATION_REVERSE_LANDSCAPE:
 			return 3;
 		default:
-			return orientationFromSensor;
+			return getOrientationFromSensor();
 		}
 	}
 
@@ -311,9 +322,7 @@ public class CoolReader extends BaseActivity
 	}
 	
 	private int densityDpi = 120;
-	int initialBatteryState = -1;
-=======
->>>>>>> origin/master
+
 	String fileToLoadOnStart = null;
 	
 	private String mVersion = "3.0";
@@ -371,8 +380,6 @@ public class CoolReader extends BaseActivity
 			
 		};
 		registerReceiver(intentReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-<<<<<<< HEAD
-
 
 		log.i("CoolReader.window=" + getWindow());
 		WindowManager.LayoutParams lp = new WindowManager.LayoutParams();
@@ -389,16 +396,16 @@ public class CoolReader extends BaseActivity
 		
 		// testing background thread
     	mBackgroundThread = BackgroundThread.instance();
-    	
-		mEngine = new Engine(this, mBackgroundThread);
-		
+
+		mEngine = Engine.getInstance(this);
+
 		// load settings
-		Properties props = loadSettings();
+		Properties props = settings();
 		String theme = props.getProperty(ReaderView.PROP_APP_THEME, DeviceInfo.FORCE_LIGHT_THEME ? "WHITE" : "LIGHT");
 		setCurrentTheme(theme);
     	
 		mFrame = new FrameLayout(this);
-		mBackgroundThread.setGUI(mFrame);
+//		mBackgroundThread.setGUI(mFrame);
 
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 
@@ -435,13 +442,13 @@ public class CoolReader extends BaseActivity
 		if ( externalDir!=null ) {
 			dbfile = Engine.checkOrMoveFile(externalDir, dbdir, SQLITE_DB_NAME);
 		}
-		mDB = new CRDB(dbfile);
+		mDB = new MainDB();
 
-       	mScanner = new Scanner(this, mDB, mEngine);
+       	mScanner = new Scanner(this, mEngine);
        	mScanner.initRoots(mEngine.getMountedRootsMap());
 		
-       	mHistory = new History(this, mDB);
-		mHistory.setCoverPagesEnabled(props.getBool(ReaderView.PROP_APP_SHOW_COVERPAGES, true));
+       	mHistory = new History(mScanner);
+//		mHistory.setCoverPagesEnabled(props.getBool(ReaderView.PROP_APP_SHOW_COVERPAGES, true));
 
 //		if ( DeviceInfo.FORCE_LIGHT_THEME ) {
 //			setTheme(android.R.style.Theme_Light);
@@ -452,11 +459,12 @@ public class CoolReader extends BaseActivity
 //			setTheme(R.style.Dialog_Fullscreen_Day);
 //		}
 		
-		mReaderView = new ReaderView(this, mEngine, mBackgroundThread, props);
+		mReaderView = new ReaderView(this, mEngine, props);
 
 		mScanner.setDirScanEnabled(props.getBool(ReaderView.PROP_APP_BOOK_PROPERTY_SCAN_ENABLED, true));
 		
 		mBrowser = new FileBrowser(this, mEngine, mScanner, mHistory);
+		mBrowser.setCoverPagesEnabled(true);
 
 		mBackgroundView = new View(this);
 		android.view.ViewGroup.LayoutParams params = new LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT);
@@ -477,9 +485,7 @@ public class CoolReader extends BaseActivity
         mBrowser.setSortOrder( props.getProperty(ReaderView.PROP_APP_BOOK_SORT_ORDER));
 		mBrowser.setSimpleViewMode(props.getBool(ReaderView.PROP_APP_FILE_BROWSER_SIMPLE_MODE, false));
         mBrowser.showDirectory(mScanner.getRoot(), null);
-=======
->>>>>>> origin/master
-        
+
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 		
 		if (initialBatteryState >= 0 && mReaderView != null)
@@ -603,12 +609,6 @@ public class CoolReader extends BaseActivity
 
 		Services.stopServices();
 	}
-	
-	public ReaderView getReaderView() {
-		return mReaderView;
-	}
-	
-
 
 	@Override
 	public void applyAppSetting( String key, String value )
@@ -1202,9 +1202,9 @@ public class CoolReader extends BaseActivity
 		if (mBrowser != null)
 			mBrowser.refreshDirectory(dir);
 	}
-<<<<<<< HEAD
 
-	View mShowView = null;
+    View mShowView = null;
+    private View currentView;
 	public void showView( View view, boolean hideProgress )
 	{
 	    mShowView = view;
@@ -1232,9 +1232,12 @@ public class CoolReader extends BaseActivity
 		mFrame.bringChildToFront(view);
 		for ( int i=0; i<mFrame.getChildCount(); i++ ) {
 			View v = mFrame.getChildAt(i);
-			v.setVisibility(view==v?View.VISIBLE:View.INVISIBLE);
-=======
-	
+			v.setVisibility(view == v ? View.VISIBLE : View.INVISIBLE);
+		}
+
+		currentView = view;
+	}
+
 	public void onSettingsChanged(Properties props) {
 		if (mHomeFrame != null) {
 			mHomeFrame.refreshOnlineCatalogs();
@@ -1243,7 +1246,6 @@ public class CoolReader extends BaseActivity
 			mReaderFrame.updateSettings(props);
 			if (mReaderView != null)
 				mReaderView.setSettings(props, null);
->>>>>>> origin/master
 		}
 	}
 	
@@ -1434,8 +1436,7 @@ public class CoolReader extends BaseActivity
 			}
 		});
 	}
-	
-<<<<<<< HEAD
+
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		int itemId = item.getItemId();
@@ -1457,7 +1458,7 @@ public class CoolReader extends BaseActivity
 			mBrowser.showOPDSRootDirectory();
 			return true;
 		case R.id.catalog_add:
-			mBrowser.editOPDSCatalog(null);
+//			mBrowser.editOPDSCatalog(null);
 			return true;
 		case R.id.book_recent_books:
 			mBrowser.showRecentBooks();
@@ -1478,7 +1479,8 @@ public class CoolReader extends BaseActivity
 			return false;
 			//return super.onOptionsItemSelected(item);
 		}
-=======
+	}
+
 	public void showBrowser(final String dir) {
 		runInBrowser(new Runnable() {
 			@Override
@@ -1486,7 +1488,6 @@ public class CoolReader extends BaseActivity
 				mBrowser.showDirectory(Services.getScanner().pathToFileInfo(dir), null);
 			}
 		});
->>>>>>> origin/master
 	}
 	
 	public void showRecentBooks() {

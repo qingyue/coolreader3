@@ -2013,24 +2013,15 @@ public class OptionsDialog extends BaseDialog implements TabContentFactory, Opti
 		super.onStop();
 	}
 
-<<<<<<< HEAD
 //	@Override
 //    public boolean onKeyDown(int keyCode, KeyEvent event) {
-//        if (((OptionsListView)mTabs.getCurrentView()).onKeyDown(keyCode, event))
-//        	return true;
+//		if (mode == Mode.READER) {
+//	        if (((OptionsListView)mTabs.getCurrentView()).onKeyDown(keyCode, event))
+//	        	return true;
+//		} else {
+//	        if (view.onKeyDown(keyCode, event))
+//	        	return true;
+//		}
 //        return super.onKeyDown(keyCode, event);
-//    }	
-=======
-	@Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
-		if (mode == Mode.READER) {
-	        if (((OptionsListView)mTabs.getCurrentView()).onKeyDown(keyCode, event))
-	        	return true;
-		} else {
-	        if (view.onKeyDown(keyCode, event))
-	        	return true;
-		}
-        return super.onKeyDown(keyCode, event);
-    }	
->>>>>>> origin/master
+//    }
 }
