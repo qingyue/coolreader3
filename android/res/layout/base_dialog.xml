@@ -24,14 +24,10 @@
             android:layout_marginRight="5dip"
             android:layout_centerVertical="true"
             android:src="@drawable/cr3_button_prev"
-<<<<<<< HEAD
-=======
             android:focusable="false"
             android:focusableInTouchMode="false"
             android:background="@null"
             android:contentDescription="@string/dlg_button_back"/>
->>>>>>> origin/master
-            />
         <TextView android:id="@+id/base_dlg_title"
             style="@style/TextAppearance.Medium"
             android:layout_width="wrap_content"
