@@ -154,17 +154,10 @@ public class FileBrowser extends LinearLayout implements FileInfoChangeListener 
 		public boolean onKeyDown(int keyCode, KeyEvent event) {
 			if (keyCode == KeyEvent.KEYCODE_BACK && mActivity.isBookOpened()) {
 				if ( isRootDir() ) {
-<<<<<<< HEAD
 //					if ( mActivity.isBookOpened() ) {
 //						mActivity.showReader();
 //						return true;
 //					} else
-=======
-					if (mActivity.isBookOpened()) {
-						mActivity.showReader();
-						return true;
-					} else
->>>>>>> origin/master
 						return super.onKeyDown(keyCode, event);
 				}
 				showParentDirectory();

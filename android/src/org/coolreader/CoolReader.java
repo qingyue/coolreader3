@@ -19,6 +19,7 @@ import org.coolreader.crengine.DeviceInfo;
 import org.coolreader.crengine.Engine;
 import org.coolreader.crengine.FileBrowser;
 import org.coolreader.crengine.FileInfo;
+import org.coolreader.crengine.History;
 import org.coolreader.crengine.History.BookInfoLoadedCallack;
 import org.coolreader.crengine.InterfaceTheme;
 import org.coolreader.crengine.L;
@@ -30,9 +31,11 @@ import org.coolreader.crengine.Properties;
 import org.coolreader.crengine.ReaderAction;
 import org.coolreader.crengine.ReaderView;
 import org.coolreader.crengine.ReaderViewLayout;
+import org.coolreader.crengine.Scanner;
 import org.coolreader.crengine.Services;
 import org.coolreader.crengine.TTS;
 import org.coolreader.crengine.TTS.OnTTSCreatedListener;
+import org.coolreader.db.MainDB;
 import org.coolreader.donations.BillingService;
 import org.coolreader.donations.BillingService.RequestPurchase;
 import org.coolreader.donations.BillingService.RestoreTransactions;
@@ -50,16 +53,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-<<<<<<< HEAD
-import android.content.pm.ActivityInfo;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager.NameNotFoundException;
-import android.content.res.Configuration;
-import android.content.res.TypedArray;
-import android.graphics.Color;
-import android.graphics.PixelFormat;
-=======
->>>>>>> origin/master
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
@@ -84,239 +77,237 @@ public class CoolReader extends BaseActivity
 	CRRootView mHomeFrame;
 	private Engine mEngine;
 	//View startupView;
-<<<<<<< HEAD
+
 	History mHistory;
-	CRDB mDB;
-	private BackgroundThread mBackgroundThread;
-	private View mBackgroundView = null;
+	MainDB mDB;
+//	private BackgroundThread mBackgroundThread;
+//	private View mBackgroundView = null;
 	
-	public CoolReader() {
-	    brightnessHackError = false; //DeviceInfo.SAMSUNG_BUTTONS_HIGHLIGHT_PATCH;
-	}
-	
-	public Scanner getScanner()
-	{
-		return mScanner;
-	}
-	
-	public History getHistory() 
-	{
-		return mHistory;
-	}
-	
-	public Engine getEngine() {
-		return mEngine;
-	}
-	
-	public FileBrowser getBrowser() {
-		return mBrowser;
-	}
+//	public CoolReader() {
+//	    brightnessHackError = false; //DeviceInfo.SAMSUNG_BUTTONS_HIGHLIGHT_PATCH;
+//	}
+//	
+//	public Scanner getScanner()
+//	{
+//		return mScanner;
+//	}
+//	
+//	public History getHistory() 
+//	{
+//		return mHistory;
+//	}
+//	
+//	public Engine getEngine() {
+//		return mEngine;
+//	}
+//	
+//	public FileBrowser getBrowser() {
+//		return mBrowser;
+//	}
 	
 	public ReaderView getReaderView() 
 	{
 		return mReaderView;
 	}
-=======
+
 	//CRDB mDB;
 	private ViewGroup mCurrentFrame;
->>>>>>> origin/master
 	
-	
-<<<<<<< HEAD
-	int screenOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR;
-	public void applyScreenOrientation( Window wnd )
-	{
-		if ( wnd!=null ) {
-			WindowManager.LayoutParams attrs = wnd.getAttributes();
-			attrs.screenOrientation = screenOrientation;
-			wnd.setAttributes(attrs);
-			if (DeviceInfo.EINK_SCREEN){
-				EinkScreen.ResetController(mReaderView);
-			}
-			
-		}
-	}
-
-	public int getScreenOrientation()
-	{
-		switch ( screenOrientation ) {
-		case ActivityInfo.SCREEN_ORIENTATION_PORTRAIT:
-			return 0;
-		case ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE:
-			return 1;
-		case ActivityInfo_SCREEN_ORIENTATION_REVERSE_PORTRAIT:
-			return 2;
-		case ActivityInfo_SCREEN_ORIENTATION_REVERSE_LANDSCAPE:
-			return 3;
-		default:
-			return orientationFromSensor;
-		}
-	}
-
-	public boolean isLandscape()
-	{
-		return screenOrientation == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE || screenOrientation == ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE;
-	}
-
-	// support pre API LEVEL 9
-	final static public int ActivityInfo_SCREEN_ORIENTATION_SENSOR_PORTRAIT = 7;
-	final static public int ActivityInfo_SCREEN_ORIENTATION_SENSOR_LANDSCAPE = 6;
-	final static public int ActivityInfo_SCREEN_ORIENTATION_REVERSE_PORTRAIT = 9;
-	final static public int ActivityInfo_SCREEN_ORIENTATION_REVERSE_LANDSCAPE = 8;
-	final static public int ActivityInfo_SCREEN_ORIENTATION_FULL_SENSOR = 10;
-
-	public void setScreenOrientation( int angle )
-	{
-//		int newOrientation = screenOrientation;
-//		boolean level9 = DeviceInfo.getSDKLevel() >= 9;
-//		switch (angle) {
-//		case 0:
-//			newOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT; // level9 ? ActivityInfo_SCREEN_ORIENTATION_SENSOR_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
-//			break;
-//		case 1:
-//			newOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE; // level9 ? ActivityInfo_SCREEN_ORIENTATION_SENSOR_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
-//			break;
-//		case 2:
-//			newOrientation = level9 ? ActivityInfo_SCREEN_ORIENTATION_REVERSE_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
-//			break;
-//		case 3:
-//			newOrientation = level9 ? ActivityInfo_SCREEN_ORIENTATION_REVERSE_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
-//			break;
-//		case 4:
-//			newOrientation = level9 ? ActivityInfo_SCREEN_ORIENTATION_FULL_SENSOR : ActivityInfo.SCREEN_ORIENTATION_SENSOR;
-//			break;
+//<<<<<<< HEAD
+//	int screenOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR;
+//	public void applyScreenOrientation( Window wnd )
+//	{
+//		if ( wnd!=null ) {
+//			WindowManager.LayoutParams attrs = wnd.getAttributes();
+//			attrs.screenOrientation = screenOrientation;
+//			wnd.setAttributes(attrs);
+//			if (DeviceInfo.EINK_SCREEN){
+//				EinkScreen.ResetController(mReaderView);
+//			}
+//			
 //		}
-//		if (newOrientation != screenOrientation) {
-//			log.d("setScreenOrientation(" + angle + ")");
-//			screenOrientation = newOrientation;
-//			setRequestedOrientation(screenOrientation);
-//			applyScreenOrientation(getWindow());
+//	}
+//
+//	public int getScreenOrientation()
+//	{
+//		switch ( screenOrientation ) {
+//		case ActivityInfo.SCREEN_ORIENTATION_PORTRAIT:
+//			return 0;
+//		case ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE:
+//			return 1;
+//		case ActivityInfo_SCREEN_ORIENTATION_REVERSE_PORTRAIT:
+//			return 2;
+//		case ActivityInfo_SCREEN_ORIENTATION_REVERSE_LANDSCAPE:
+//			return 3;
+//		default:
+//			return orientationFromSensor;
 //		}
-
-	    /**
-	     * qingyue add
-	     */
-	    int newOrientation = screenOrientation;
-	    switch (angle) {
-	    case 0:
-	        newOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT; // level9 ? ActivityInfo_SCREEN_ORIENTATION_SENSOR_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
-	        break;
-	    case 1:
-	        newOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE; // level9 ? ActivityInfo_SCREEN_ORIENTATION_SENSOR_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
-	        break;
-	    case 2:
-	        newOrientation = ActivityInfo_SCREEN_ORIENTATION_REVERSE_PORTRAIT;
-	        break;
-	    case 3:
-	        newOrientation = ActivityInfo_SCREEN_ORIENTATION_REVERSE_LANDSCAPE;
-	        break;
-	    }
-	    if (newOrientation != screenOrientation) {
-	        screenOrientation = newOrientation;
-	        setRequestedOrientation(screenOrientation);
-	        applyScreenOrientation(getWindow());
-	    }
-	}
-
-	private Runnable backlightTimerTask = null;
-	private static long lastUserActivityTime;
-	public static final int DEF_SCREEN_BACKLIGHT_TIMER_INTERVAL = 3 * 60 * 1000;
-	private int screenBacklightDuration = DEF_SCREEN_BACKLIGHT_TIMER_INTERVAL;
-
-	private class ScreenBacklightControl {
-		PowerManager.WakeLock wl = null;
-
-		public ScreenBacklightControl() {
-		}
-
-
-		public void onUserActivity() {
-			lastUserActivityTime = Utils.timeStamp();
-			if (!isWakeLockEnabled())
-				return;
-			if (wl == null) {
-				PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-				wl = pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK
-				/* | PowerManager.ON_AFTER_RELEASE */, "cr3");
-				log.d("ScreenBacklightControl: WakeLock created");
-			}
-			if (!isStarted()) {
-				log.d("ScreenBacklightControl: user activity while not started");
-				release();
-				return;
-			}
-
-			if (!isHeld()) {
-				log.d("ScreenBacklightControl: acquiring WakeLock");
-				wl.acquire();
-			}
-
-			if (backlightTimerTask == null) {
-				log.v("ScreenBacklightControl: timer task started");
-				backlightTimerTask = new BacklightTimerTask();
-				BackgroundThread.instance().postGUI(backlightTimerTask,
-						screenBacklightDuration / 10);
-			}
-		}
-
-		public boolean isHeld() {
-			return wl != null && wl.isHeld();
-		}
-
-		public void release() {
-			if (wl != null && wl.isHeld()) {
-				log.d("ScreenBacklightControl: wl.release()");
-				wl.release();
-			}
-			backlightTimerTask = null;
-		}
-
-		private class BacklightTimerTask implements Runnable {
-
-			@Override
-			public void run() {
-				if (backlightTimerTask == null)
-					return;
-				long interval = Utils.timeInterval(lastUserActivityTime);
-				log.v("ScreenBacklightControl: timer task, lastActivityMillis = "
-						+ interval);
-				int nextTimerInterval = screenBacklightDuration / 20;
-				boolean dim = false;
-				if (interval > screenBacklightDuration * 8 / 10) {
-					nextTimerInterval = nextTimerInterval / 8;
-					dim = true;
-				}
-				if (interval > screenBacklightDuration) {
-					log.v("ScreenBacklightControl: interval is expired");
-					release();
-				} else {
-					BackgroundThread.instance().postGUI(backlightTimerTask, nextTimerInterval);
-					if (dim) {
-						updateBacklightBrightness(-0.9f); // reduce by 9%
-					}
-				}
-			}
-
-		};
-
-	}
-
-	ScreenBacklightControl backlightControl = new ScreenBacklightControl();
-	
-	public int getPalmTipPixels()
-	{
-		return densityDpi / 3; // 1/3"
-	}
-	
-	public int getDensityDpi()
-	{
-		return densityDpi;
-	}
-	
-	private int densityDpi = 120;
-	int initialBatteryState = -1;
-=======
->>>>>>> origin/master
+//	}
+//
+//	public boolean isLandscape()
+//	{
+//		return screenOrientation == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE || screenOrientation == ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE;
+//	}
+//
+//	// support pre API LEVEL 9
+//	final static public int ActivityInfo_SCREEN_ORIENTATION_SENSOR_PORTRAIT = 7;
+//	final static public int ActivityInfo_SCREEN_ORIENTATION_SENSOR_LANDSCAPE = 6;
+//	final static public int ActivityInfo_SCREEN_ORIENTATION_REVERSE_PORTRAIT = 9;
+//	final static public int ActivityInfo_SCREEN_ORIENTATION_REVERSE_LANDSCAPE = 8;
+//	final static public int ActivityInfo_SCREEN_ORIENTATION_FULL_SENSOR = 10;
+//
+//	public void setScreenOrientation( int angle )
+//	{
+////		int newOrientation = screenOrientation;
+////		boolean level9 = DeviceInfo.getSDKLevel() >= 9;
+////		switch (angle) {
+////		case 0:
+////			newOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT; // level9 ? ActivityInfo_SCREEN_ORIENTATION_SENSOR_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+////			break;
+////		case 1:
+////			newOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE; // level9 ? ActivityInfo_SCREEN_ORIENTATION_SENSOR_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
+////			break;
+////		case 2:
+////			newOrientation = level9 ? ActivityInfo_SCREEN_ORIENTATION_REVERSE_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+////			break;
+////		case 3:
+////			newOrientation = level9 ? ActivityInfo_SCREEN_ORIENTATION_REVERSE_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
+////			break;
+////		case 4:
+////			newOrientation = level9 ? ActivityInfo_SCREEN_ORIENTATION_FULL_SENSOR : ActivityInfo.SCREEN_ORIENTATION_SENSOR;
+////			break;
+////		}
+////		if (newOrientation != screenOrientation) {
+////			log.d("setScreenOrientation(" + angle + ")");
+////			screenOrientation = newOrientation;
+////			setRequestedOrientation(screenOrientation);
+////			applyScreenOrientation(getWindow());
+////		}
+//
+//	    /**
+//	     * qingyue add
+//	     */
+//	    int newOrientation = screenOrientation;
+//	    switch (angle) {
+//	    case 0:
+//	        newOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT; // level9 ? ActivityInfo_SCREEN_ORIENTATION_SENSOR_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+//	        break;
+//	    case 1:
+//	        newOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE; // level9 ? ActivityInfo_SCREEN_ORIENTATION_SENSOR_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
+//	        break;
+//	    case 2:
+//	        newOrientation = ActivityInfo_SCREEN_ORIENTATION_REVERSE_PORTRAIT;
+//	        break;
+//	    case 3:
+//	        newOrientation = ActivityInfo_SCREEN_ORIENTATION_REVERSE_LANDSCAPE;
+//	        break;
+//	    }
+//	    if (newOrientation != screenOrientation) {
+//	        screenOrientation = newOrientation;
+//	        setRequestedOrientation(screenOrientation);
+//	        applyScreenOrientation(getWindow());
+//	    }
+//	}
+//
+//	private Runnable backlightTimerTask = null;
+//	private static long lastUserActivityTime;
+//	public static final int DEF_SCREEN_BACKLIGHT_TIMER_INTERVAL = 3 * 60 * 1000;
+//	private int screenBacklightDuration = DEF_SCREEN_BACKLIGHT_TIMER_INTERVAL;
+//
+//	private class ScreenBacklightControl {
+//		PowerManager.WakeLock wl = null;
+//
+//		public ScreenBacklightControl() {
+//		}
+//
+//
+//		public void onUserActivity() {
+//			lastUserActivityTime = Utils.timeStamp();
+//			if (!isWakeLockEnabled())
+//				return;
+//			if (wl == null) {
+//				PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+//				wl = pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK
+//				/* | PowerManager.ON_AFTER_RELEASE */, "cr3");
+//				log.d("ScreenBacklightControl: WakeLock created");
+//			}
+//			if (!isStarted()) {
+//				log.d("ScreenBacklightControl: user activity while not started");
+//				release();
+//				return;
+//			}
+//
+//			if (!isHeld()) {
+//				log.d("ScreenBacklightControl: acquiring WakeLock");
+//				wl.acquire();
+//			}
+//
+//			if (backlightTimerTask == null) {
+//				log.v("ScreenBacklightControl: timer task started");
+//				backlightTimerTask = new BacklightTimerTask();
+//				BackgroundThread.instance().postGUI(backlightTimerTask,
+//						screenBacklightDuration / 10);
+//			}
+//		}
+//
+//		public boolean isHeld() {
+//			return wl != null && wl.isHeld();
+//		}
+//
+//		public void release() {
+//			if (wl != null && wl.isHeld()) {
+//				log.d("ScreenBacklightControl: wl.release()");
+//				wl.release();
+//			}
+//			backlightTimerTask = null;
+//		}
+//
+//		private class BacklightTimerTask implements Runnable {
+//
+//			@Override
+//			public void run() {
+//				if (backlightTimerTask == null)
+//					return;
+//				long interval = Utils.timeInterval(lastUserActivityTime);
+//				log.v("ScreenBacklightControl: timer task, lastActivityMillis = "
+//						+ interval);
+//				int nextTimerInterval = screenBacklightDuration / 20;
+//				boolean dim = false;
+//				if (interval > screenBacklightDuration * 8 / 10) {
+//					nextTimerInterval = nextTimerInterval / 8;
+//					dim = true;
+//				}
+//				if (interval > screenBacklightDuration) {
+//					log.v("ScreenBacklightControl: interval is expired");
+//					release();
+//				} else {
+//					BackgroundThread.instance().postGUI(backlightTimerTask, nextTimerInterval);
+//					if (dim) {
+//						updateBacklightBrightness(-0.9f); // reduce by 9%
+//					}
+//				}
+//			}
+//
+//		};
+//
+//	}
+//
+//	ScreenBacklightControl backlightControl = new ScreenBacklightControl();
+//	
+//	public int getPalmTipPixels()
+//	{
+//		return densityDpi / 3; // 1/3"
+//	}
+//	
+//	public int getDensityDpi()
+//	{
+//		return densityDpi;
+//	}
+//	
+//	private int densityDpi = 120;
+//	int initialBatteryState = -1;
+//=======
+//>>>>>>> origin/master
 	String fileToLoadOnStart = null;
 	
 	private String mVersion = "3.0";
@@ -374,114 +365,114 @@ public class CoolReader extends BaseActivity
 			
 		};
 		registerReceiver(intentReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-<<<<<<< HEAD
-
-
-		log.i("CoolReader.window=" + getWindow());
-		WindowManager.LayoutParams lp = new WindowManager.LayoutParams();
-		lp.alpha = 1.0f;
-		lp.dimAmount = 0.0f;
-		lp.format = PixelFormat.RGB_565;
-		lp.gravity = Gravity.CENTER_HORIZONTAL | Gravity.CENTER_VERTICAL;
-		lp.horizontalMargin = 0;
-		lp.verticalMargin = 0;
-		lp.windowAnimations = 0;
-		lp.layoutAnimationParameters = null;
-		lp.memoryType = WindowManager.LayoutParams.MEMORY_TYPE_NORMAL;
-		getWindow().setAttributes(lp);
-		
-		// testing background thread
-    	mBackgroundThread = BackgroundThread.instance();
-    	
-		mEngine = new Engine(this, mBackgroundThread);
-		
-		// load settings
-		Properties props = loadSettings();
-		String theme = props.getProperty(ReaderView.PROP_APP_THEME, DeviceInfo.FORCE_LIGHT_THEME ? "WHITE" : "LIGHT");
-		setCurrentTheme(theme);
-    	
-		mFrame = new FrameLayout(this);
-		mBackgroundThread.setGUI(mFrame);
-
-		requestWindowFeature(Window.FEATURE_NO_TITLE);
-
-		setFullscreen( props.getBool(ReaderView.PROP_APP_FULLSCREEN, (DeviceInfo.EINK_SCREEN?true:false)));
-		int orientation = props.getInt(ReaderView.PROP_APP_SCREEN_ORIENTATION, 0); //(DeviceInfo.EINK_SCREEN?0:4)
-		if ( orientation < 0 || orientation > 4 )
-			orientation = 0;
-		setScreenOrientation(orientation);
-		int backlight = props.getInt(ReaderView.PROP_APP_SCREEN_BACKLIGHT, -1);
-		if ( backlight<-1 || backlight>100 )
-			backlight = -1;
-		setScreenBacklightLevel(backlight);
-
-        mEngine.showProgress( 0, R.string.progress_starting_cool_reader );
-
-        // wait until all background tasks are executed
-        mBackgroundThread.syncWithBackground();
-        
-		mEngine.setHyphenationDictionary(HyphDict.byCode(props.getProperty(ReaderView.PROP_HYPHENATION_DICT, Engine.HyphDict.RUSSIAN.toString())));
-		
-		//this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, 
-        //       WindowManager.LayoutParams.FLAG_FULLSCREEN );
-//		startupView = new View(this) {
-//		};
-//		startupView.setBackgroundColor(Color.BLACK);
-		setScreenBacklightDuration(props.getInt(ReaderView.PROP_APP_SCREEN_BACKLIGHT_LOCK, 3));
-
-		// open DB
-		final String SQLITE_DB_NAME = "cr3db.sqlite";
-		File dbdir = getDir("db", Context.MODE_PRIVATE);
-		dbdir.mkdirs();
-		File dbfile = new File(dbdir, SQLITE_DB_NAME);
-		File externalDir = Engine.getExternalSettingsDir();
-		if ( externalDir!=null ) {
-			dbfile = Engine.checkOrMoveFile(externalDir, dbdir, SQLITE_DB_NAME);
-		}
-		mDB = new CRDB(dbfile);
-
-       	mScanner = new Scanner(this, mDB, mEngine);
-       	mScanner.initRoots(mEngine.getMountedRootsMap());
-		
-       	mHistory = new History(this, mDB);
-		mHistory.setCoverPagesEnabled(props.getBool(ReaderView.PROP_APP_SHOW_COVERPAGES, true));
-
-//		if ( DeviceInfo.FORCE_LIGHT_THEME ) {
-//			setTheme(android.R.style.Theme_Light);
-//			getWindow().setBackgroundDrawableResource(drawable.editbox_background);
+//<<<<<<< HEAD
+//
+//
+//		log.i("CoolReader.window=" + getWindow());
+//		WindowManager.LayoutParams lp = new WindowManager.LayoutParams();
+//		lp.alpha = 1.0f;
+//		lp.dimAmount = 0.0f;
+//		lp.format = PixelFormat.RGB_565;
+//		lp.gravity = Gravity.CENTER_HORIZONTAL | Gravity.CENTER_VERTICAL;
+//		lp.horizontalMargin = 0;
+//		lp.verticalMargin = 0;
+//		lp.windowAnimations = 0;
+//		lp.layoutAnimationParameters = null;
+//		lp.memoryType = WindowManager.LayoutParams.MEMORY_TYPE_NORMAL;
+//		getWindow().setAttributes(lp);
+//		
+//		// testing background thread
+//    	mBackgroundThread = BackgroundThread.instance();
+//    	
+//		mEngine = new Engine(this, mBackgroundThread);
+//		
+//		// load settings
+//		Properties props = loadSettings();
+//		String theme = props.getProperty(ReaderView.PROP_APP_THEME, DeviceInfo.FORCE_LIGHT_THEME ? "WHITE" : "LIGHT");
+//		setCurrentTheme(theme);
+//    	
+//		mFrame = new FrameLayout(this);
+//		mBackgroundThread.setGUI(mFrame);
+//
+//		requestWindowFeature(Window.FEATURE_NO_TITLE);
+//
+//		setFullscreen( props.getBool(ReaderView.PROP_APP_FULLSCREEN, (DeviceInfo.EINK_SCREEN?true:false)));
+//		int orientation = props.getInt(ReaderView.PROP_APP_SCREEN_ORIENTATION, 0); //(DeviceInfo.EINK_SCREEN?0:4)
+//		if ( orientation < 0 || orientation > 4 )
+//			orientation = 0;
+//		setScreenOrientation(orientation);
+//		int backlight = props.getInt(ReaderView.PROP_APP_SCREEN_BACKLIGHT, -1);
+//		if ( backlight<-1 || backlight>100 )
+//			backlight = -1;
+//		setScreenBacklightLevel(backlight);
+//
+//        mEngine.showProgress( 0, R.string.progress_starting_cool_reader );
+//
+//        // wait until all background tasks are executed
+//        mBackgroundThread.syncWithBackground();
+//        
+//		mEngine.setHyphenationDictionary(HyphDict.byCode(props.getProperty(ReaderView.PROP_HYPHENATION_DICT, Engine.HyphDict.RUSSIAN.toString())));
+//		
+//		//this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, 
+//        //       WindowManager.LayoutParams.FLAG_FULLSCREEN );
+////		startupView = new View(this) {
+////		};
+////		startupView.setBackgroundColor(Color.BLACK);
+//		setScreenBacklightDuration(props.getInt(ReaderView.PROP_APP_SCREEN_BACKLIGHT_LOCK, 3));
+//
+//		// open DB
+//		final String SQLITE_DB_NAME = "cr3db.sqlite";
+//		File dbdir = getDir("db", Context.MODE_PRIVATE);
+//		dbdir.mkdirs();
+//		File dbfile = new File(dbdir, SQLITE_DB_NAME);
+//		File externalDir = Engine.getExternalSettingsDir();
+//		if ( externalDir!=null ) {
+//			dbfile = Engine.checkOrMoveFile(externalDir, dbdir, SQLITE_DB_NAME);
 //		}
-//		if ( DeviceInfo.FORCE_LIGHT_THEME ) {
-//			mFrame.setBackgroundColor( Color.WHITE );
-//			setTheme(R.style.Dialog_Fullscreen_Day);
-//		}
-		
-		mReaderView = new ReaderView(this, mEngine, mBackgroundThread, props);
-
-		mScanner.setDirScanEnabled(props.getBool(ReaderView.PROP_APP_BOOK_PROPERTY_SCAN_ENABLED, true));
-		
-		mBrowser = new FileBrowser(this, mEngine, mScanner, mHistory);
-
-		mBackgroundView = new View(this);
-		android.view.ViewGroup.LayoutParams params = new LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT);
-		mBackgroundView.setLayoutParams(params);
-		mBackgroundView.setBackgroundColor(Color.WHITE);
-
-		mFrame.addView(mReaderView);
-		mFrame.addView(mBackgroundView);
-//		mFrame.addView(mBrowser);
-//		mFrame.addView(startupView);
-
-		setContentView( mFrame );
-        log.i("initializing browser");
-        mBrowser.init();
-        showView(mBackgroundView, false);
-//      showView(mBrowser, false);
-        log.i("initializing reader");
-        mBrowser.setSortOrder( props.getProperty(ReaderView.PROP_APP_BOOK_SORT_ORDER));
-		mBrowser.setSimpleViewMode(props.getBool(ReaderView.PROP_APP_FILE_BROWSER_SIMPLE_MODE, false));
-        mBrowser.showDirectory(mScanner.getRoot(), null);
-=======
->>>>>>> origin/master
+//		mDB = new CRDB(dbfile);
+//
+//       	mScanner = new Scanner(this, mDB, mEngine);
+//       	mScanner.initRoots(mEngine.getMountedRootsMap());
+//		
+//       	mHistory = new History(this, mDB);
+//		mHistory.setCoverPagesEnabled(props.getBool(ReaderView.PROP_APP_SHOW_COVERPAGES, true));
+//
+////		if ( DeviceInfo.FORCE_LIGHT_THEME ) {
+////			setTheme(android.R.style.Theme_Light);
+////			getWindow().setBackgroundDrawableResource(drawable.editbox_background);
+////		}
+////		if ( DeviceInfo.FORCE_LIGHT_THEME ) {
+////			mFrame.setBackgroundColor( Color.WHITE );
+////			setTheme(R.style.Dialog_Fullscreen_Day);
+////		}
+//		
+//		mReaderView = new ReaderView(this, mEngine, mBackgroundThread, props);
+//
+//		mScanner.setDirScanEnabled(props.getBool(ReaderView.PROP_APP_BOOK_PROPERTY_SCAN_ENABLED, true));
+//		
+//		mBrowser = new FileBrowser(this, mEngine, mScanner, mHistory);
+//
+//		mBackgroundView = new View(this);
+//		android.view.ViewGroup.LayoutParams params = new LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT);
+//		mBackgroundView.setLayoutParams(params);
+//		mBackgroundView.setBackgroundColor(Color.WHITE);
+//
+//		mFrame.addView(mReaderView);
+//		mFrame.addView(mBackgroundView);
+////		mFrame.addView(mBrowser);
+////		mFrame.addView(startupView);
+//
+//		setContentView( mFrame );
+//        log.i("initializing browser");
+//        mBrowser.init();
+//        showView(mBackgroundView, false);
+////      showView(mBrowser, false);
+//        log.i("initializing reader");
+//        mBrowser.setSortOrder( props.getProperty(ReaderView.PROP_APP_BOOK_SORT_ORDER));
+//		mBrowser.setSimpleViewMode(props.getBool(ReaderView.PROP_APP_FILE_BROWSER_SIMPLE_MODE, false));
+//        mBrowser.showDirectory(mScanner.getRoot(), null);
+//=======
+//>>>>>>> origin/master
         
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 		
@@ -606,12 +597,6 @@ public class CoolReader extends BaseActivity
 
 		Services.stopServices();
 	}
-	
-	public ReaderView getReaderView() {
-		return mReaderView;
-	}
-	
-
 
 	@Override
 	public void applyAppSetting( String key, String value )
@@ -1205,38 +1190,38 @@ public class CoolReader extends BaseActivity
 		if (mBrowser != null)
 			mBrowser.refreshDirectory(dir);
 	}
-<<<<<<< HEAD
-
-	View mShowView = null;
-	public void showView( View view, boolean hideProgress )
-	{
-	    mShowView = view;
-//	    if (view != null && (view instanceof ReaderView)) {
-//            setFullscreen(true);
-//        }
-//	    else {
-//            setFullscreen(false);
-//        }
-
-		if ( mBackgroundThread==null )
-			return;
-		if ( hideProgress )
-		mBackgroundThread.postGUI(new Runnable() {
-			public void run() {
-				mEngine.hideProgress();
-			}
-		});
-		if ( currentView==view ) {
-			log.v("showView : view " + view.getClass().getSimpleName() + " is already shown");
-			return;
-		}
-
-		log.v("showView : showing view " + view.getClass().getSimpleName());
-		mFrame.bringChildToFront(view);
-		for ( int i=0; i<mFrame.getChildCount(); i++ ) {
-			View v = mFrame.getChildAt(i);
-			v.setVisibility(view==v?View.VISIBLE:View.INVISIBLE);
-=======
+//<<<<<<< HEAD
+//
+//	View mShowView = null;
+//	public void showView( View view, boolean hideProgress )
+//	{
+//	    mShowView = view;
+////	    if (view != null && (view instanceof ReaderView)) {
+////            setFullscreen(true);
+////        }
+////	    else {
+////            setFullscreen(false);
+////        }
+//
+//		if ( mBackgroundThread==null )
+//			return;
+//		if ( hideProgress )
+//		mBackgroundThread.postGUI(new Runnable() {
+//			public void run() {
+//				mEngine.hideProgress();
+//			}
+//		});
+//		if ( currentView==view ) {
+//			log.v("showView : view " + view.getClass().getSimpleName() + " is already shown");
+//			return;
+//		}
+//
+//		log.v("showView : showing view " + view.getClass().getSimpleName());
+//		mFrame.bringChildToFront(view);
+//		for ( int i=0; i<mFrame.getChildCount(); i++ ) {
+//			View v = mFrame.getChildAt(i);
+//			v.setVisibility(view==v?View.VISIBLE:View.INVISIBLE);
+//=======
 	
 	public void onSettingsChanged(Properties props) {
 		if (mHomeFrame != null) {
@@ -1246,7 +1231,6 @@ public class CoolReader extends BaseActivity
 			mReaderFrame.updateSettings(props);
 			if (mReaderView != null)
 				mReaderView.setSettings(props, null);
->>>>>>> origin/master
 		}
 	}
 	
@@ -1438,50 +1422,50 @@ public class CoolReader extends BaseActivity
 		});
 	}
 	
-<<<<<<< HEAD
-	@Override
-	public boolean onOptionsItemSelected(MenuItem item) {
-		int itemId = item.getItemId();
-		if ( mReaderView.onMenuItem(itemId))
-			return true; // processed by ReaderView
-		// other commands
-		switch ( itemId ) {
-		case R.id.book_toggle_simple_mode:
-			mBrowser.setSimpleViewMode(!mBrowser.isSimpleViewMode());
-			mReaderView.saveSetting(ReaderView.PROP_APP_FILE_BROWSER_SIMPLE_MODE, mBrowser.isSimpleViewMode()?"1":"0");
-			return true;
-		case R.id.book_sort_order:
-			mBrowser.showSortOrderMenu();
-			return true;
-		case R.id.book_root:
-			mBrowser.showRootDirectory();
-			return true;
-		case R.id.book_opds_root:
-			mBrowser.showOPDSRootDirectory();
-			return true;
-		case R.id.catalog_add:
-			mBrowser.editOPDSCatalog(null);
-			return true;
-		case R.id.book_recent_books:
-			mBrowser.showRecentBooks();
-			return true;
-		case R.id.book_find:
-			mBrowser.showFindBookDialog();
-			return true;
-		case R.id.book_scan_recursive:
-			mBrowser.scanCurrentDirectoryRecursive();
-			return true;
-		case R.id.book_back_to_reading:
-			if ( isBookOpened() )
-			    showReader();
-			else
-			    showToast("No book opened");
-			return true;
-		default:
-			return false;
-			//return super.onOptionsItemSelected(item);
-		}
-=======
+//<<<<<<< HEAD
+//	@Override
+//	public boolean onOptionsItemSelected(MenuItem item) {
+//		int itemId = item.getItemId();
+//		if ( mReaderView.onMenuItem(itemId))
+//			return true; // processed by ReaderView
+//		// other commands
+//		switch ( itemId ) {
+//		case R.id.book_toggle_simple_mode:
+//			mBrowser.setSimpleViewMode(!mBrowser.isSimpleViewMode());
+//			mReaderView.saveSetting(ReaderView.PROP_APP_FILE_BROWSER_SIMPLE_MODE, mBrowser.isSimpleViewMode()?"1":"0");
+//			return true;
+//		case R.id.book_sort_order:
+//			mBrowser.showSortOrderMenu();
+//			return true;
+//		case R.id.book_root:
+//			mBrowser.showRootDirectory();
+//			return true;
+//		case R.id.book_opds_root:
+//			mBrowser.showOPDSRootDirectory();
+//			return true;
+//		case R.id.catalog_add:
+//			mBrowser.editOPDSCatalog(null);
+//			return true;
+//		case R.id.book_recent_books:
+//			mBrowser.showRecentBooks();
+//			return true;
+//		case R.id.book_find:
+//			mBrowser.showFindBookDialog();
+//			return true;
+//		case R.id.book_scan_recursive:
+//			mBrowser.scanCurrentDirectoryRecursive();
+//			return true;
+//		case R.id.book_back_to_reading:
+//			if ( isBookOpened() )
+//			    showReader();
+//			else
+//			    showToast("No book opened");
+//			return true;
+//		default:
+//			return false;
+//			//return super.onOptionsItemSelected(item);
+//		}
+//=======
 	public void showBrowser(final String dir) {
 		runInBrowser(new Runnable() {
 			@Override
@@ -1489,7 +1473,6 @@ public class CoolReader extends BaseActivity
 				mBrowser.showDirectory(Services.getScanner().pathToFileInfo(dir), null);
 			}
 		});
->>>>>>> origin/master
 	}
 	
 	public void showRecentBooks() {

@@ -2,7 +2,6 @@ package org.coolreader.crengine;
 
 import java.util.ArrayList;
 import java.util.concurrent.Callable;
-import java.util.concurrent.Executor;
 
 import org.coolreader.crengine.ReaderView.Sync;
 
@@ -10,7 +9,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
-import android.view.View;
 
 /**
  * Allows running tasks either in background thread or in GUI thread.
