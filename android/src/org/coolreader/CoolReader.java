@@ -447,7 +447,7 @@ public class CoolReader extends BaseActivity
 ////			setTheme(R.style.Dialog_Fullscreen_Day);
 ////		}
 //		
-//		mReaderView = new ReaderView(this, mEngine, mBackgroundThread, props);
+		mReaderView = new ReaderView(this, mEngine, loadSettings(0));
 //
 //		mScanner.setDirScanEnabled(props.getBool(ReaderView.PROP_APP_BOOK_PROPERTY_SCAN_ENABLED, true));
 //		
@@ -526,15 +526,16 @@ public class CoolReader extends BaseActivity
 //        log.i("initializing browser");
 //        log.i("initializing reader");
 //        
-//        fileToLoadOnStart = null;
-//		Intent intent = getIntent();
-//		if ( intent!=null && Intent.ACTION_VIEW.equals(intent.getAction()) ) {
-//			Uri uri = intent.getData();
-//			if ( uri!=null ) {
-//				fileToLoadOnStart = extractFileName(uri);
-//			}
-//			intent.setData(null);
-//		}
+        fileToLoadOnStart = null;
+		Intent intent = getIntent();
+		if ( intent!=null && Intent.ACTION_VIEW.equals(intent.getAction()) ) {
+			Uri uri = intent.getData();
+			if ( uri!=null ) {
+				fileToLoadOnStart = extractFileName(uri);
+			}
+			intent.setData(null);
+		}
+		System.out.println("fileToLoadOnStart: "+fileToLoadOnStart);
         
 		showRootWindow();
 		
@@ -862,6 +863,10 @@ public class CoolReader extends BaseActivity
 		stopped = false;
 
 		final String fileName = fileToLoadOnStart;
+		System.out.println("fileName: "+fileName);
+		if (mReaderView != null && fileName != null) {
+            this.loadDocument(new FileInfo(fileName));
+        }
 //		BackgroundThread.instance().postGUI(new Runnable() {
 //			public void run() {
 //				log.i("onStart, scheduled runnable: load document");
