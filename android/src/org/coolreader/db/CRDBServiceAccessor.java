@@ -20,8 +20,8 @@ public class CRDBServiceAccessor {
     private MountPathCorrector pathCorrector;
 
     public CRDBService.LocalBinder get() {
-    	if (mService == null)
-    		throw new RuntimeException("no service");
+//    	if (mService == null)
+//    		throw new RuntimeException("no service");
     	return mService;
     }
     
@@ -45,8 +45,10 @@ public class CRDBServiceAccessor {
     		onConnectCallbacks.add(boundCallback);
     	if (!bindIsCalled) {
     		bindIsCalled = true;
+    		System.out.println("zzzzzzzzzzzzzzzzzzzzzzzz");
 	    	if (mActivity.bindService(new Intent(mActivity, 
 	                CRDBService.class), mServiceConnection, Context.BIND_AUTO_CREATE)) {
+	    	    System.out.println("ccccccccccccccccccc");
 	            mServiceBound = true;
 	    	} else {
 	    		Log.e(TAG, "cannot bind CRDBService");
@@ -65,7 +67,9 @@ public class CRDBServiceAccessor {
     
     private ServiceConnection mServiceConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder service) {
+            System.out.println("===onServiceConnected===");
         	mService = ((CRDBService.LocalBinder)service);
+        	System.out.println("mService: "+mService);
         	Log.i(TAG, "connected to CRDBService");
         	if (pathCorrector != null)
         		mService.setPathCorrector(pathCorrector);
@@ -78,6 +82,7 @@ public class CRDBServiceAccessor {
         }
 
         public void onServiceDisconnected(ComponentName className) {
+            System.out.println("===onServiceDisconnected===");
             mService = null;
         	Log.i(TAG, "disconnected from CRDBService");
         }
