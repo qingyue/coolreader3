@@ -14,6 +14,7 @@ import java.util.concurrent.Callable;
 
 import org.coolreader.CoolReader;
 import org.coolreader.R;
+import org.coolreader.crengine.CoverpageManager.ImageItem;
 import org.coolreader.crengine.Engine.HyphDict;
 import org.coolreader.crengine.InputDialog.InputHandler;
 import org.coolreader.sync.ChangeInfo;
@@ -3755,17 +3756,16 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
             
             RefValue<Bitmap> result = new RefValue<Bitmap>();
             if (!OnyxCmsCenter.getThumbnail(ctx, data, result)) {
-//                BitmapDrawable b = this.mActivity.getHistory().getBookCoverpageImage(null, fi);
-                BitmapDrawable b = new BitmapDrawable(getResources(), result.getValue());
-                Log.d(TAG, "cover not null: " + (b != null));
-                if (b != null) {
-                    if (!OnyxCmsCenter.insertThumbnail(ctx, data, b.getBitmap())) {
-                        Log.d(TAG, "insert thumbnail failed");
-                    }
-                    else {
-                        Log.d(TAG, "insert thumbnail successfully");
-                    }
-                }
+//                BitmapDrawable b = Services.getCoverpageManager().getBookCoverpageImage(null, fi);
+//                Log.d(TAG, "cover not null: " + (b != null));
+//                if (b != null) {
+//                    if (!OnyxCmsCenter.insertThumbnail(ctx, data, b.getBitmap())) {
+//                        Log.d(TAG, "insert thumbnail failed");
+//                    }
+//                    else {
+//                        Log.d(TAG, "insert thumbnail successfully");
+//                    }
+//                }
             }
             
             

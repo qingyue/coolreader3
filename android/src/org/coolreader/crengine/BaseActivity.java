@@ -93,18 +93,7 @@ public class BaseActivity extends Activity implements Settings {
 		if (mCRDBService == null) {
 			mCRDBService = new CRDBServiceAccessor(this, Engine.getInstance(this).getPathCorrector());
 		}
-		waitForCRDBService(new Runnable()
-        {
-            
-            @Override
-            public void run()
-            {
-                // TODO Auto-generated method stub
-                
-            }
-        });
-//        mCRDBService.bind(waitForCRDBService(readyCallback));
-        System.out.println("mCRDBService: "+mCRDBService);
+        mCRDBService.bind(null);
 	}
 
 	/**
