@@ -102,11 +102,11 @@ public class ReaderAction {
 	public final static ReaderAction SCAN_DIRECTORY_RECURSIVE = new ReaderAction("SCAN_DIRECTORY_RECURSIVE", R.string.mi_book_scan_recursive, ReaderCommand.DCMD_SCAN_DIRECTORY_RECURSIVE, 0);
 	public final static ReaderAction NEXT_CHAPTER = new ReaderAction("NEXT_CHAPTER", R.string.action_chapter_next, ReaderCommand.DCMD_MOVE_BY_CHAPTER, 1);
 	public final static ReaderAction PREV_CHAPTER = new ReaderAction("PREV_CHAPTER", R.string.action_chapter_prev, ReaderCommand.DCMD_MOVE_BY_CHAPTER, -1);
-	public final static ReaderAction EXIT = new ReaderAction("EXIT", R.string.action_exit, ReaderCommand.DCMD_EXIT, 0, R.id.cr3_mi_exit ).setIconId(R.drawable.cr3_viewer_exit);
 
 	//qingyue add
 	public final static ReaderAction INTERLINE_SPACE_INCREASE = new ReaderAction("INTERLINE_SPACE_INCREASE", R.string.interline_space_increase, ReaderCommand.DCMD_INTERLINE_SPACE_INCREASE, 0, R.id.cr3_mi_interline_space_increase );
 	public final static ReaderAction INTERLINE_SPACE_DECREASE = new ReaderAction("INTERLINE_SPACE_DECREASE", R.string.interline_space_decrease, ReaderCommand.DCMD_INTERLINE_SPACE_DECREASE, 0, R.id.cr3_mi_interline_space_decrease );
+	public final static ReaderAction EXIT = new ReaderAction("EXIT", R.string.action_exit, ReaderCommand.DCMD_EXIT, 0, R.id.cr3_mi_exit ).setIconId(R.drawable.cr3_viewer_exit);
 
 	public final static ReaderAction[] AVAILABLE_ACTIONS = {
 		NONE,

@@ -66,7 +66,6 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
     private static final String TAG = "ReaderView";
 	public static final Logger log = L.create("rv", Log.VERBOSE);
 	public static final Logger alog = L.create("ra", Log.WARN);
-
 	private DocView doc;
 	
     // additional key codes for Nook
@@ -1165,344 +1164,344 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 //	private TapHandler currentTapHandler = null;
 //	public class TapHandler {
 //
-//		private final static int STATE_INITIAL = 0; // no events yet
-//		private final static int STATE_DOWN_1 = 1; // down first time
-//		private final static int STATE_SELECTION = 3; // selection is started
-//		private final static int STATE_FLIPPING = 4; // flipping is in progress
-//		private final static int STATE_WAIT_FOR_DOUBLE_CLICK = 5; // flipping is in progress
-//		private final static int STATE_DONE = 6; // done: no more tracking
-//		private final static int STATE_BRIGHTNESS = 7; // brightness change in progress
-//		
-//		private final static int EXPIRATION_TIME_MS = 180000;
-//		
-//		int state = STATE_INITIAL;
-//		
-//		int start_x = 0;
-//		int start_y = 0;
-//		int width = 0;
-//		int height = 0;
-//		ReaderAction shortTapAction = ReaderAction.NONE;
-//		ReaderAction longTapAction = ReaderAction.NONE;
-//		ReaderAction doubleTapAction = ReaderAction.NONE;
-//		long firstDown;
-//		
-//		/// handle unexpected event for state: stop tracking
-//		private boolean unexpectedEvent() {
-//			cancel();
-//			return true; // ignore
-//		}
-//		
-//		public boolean isInitialState() {
-//			return state == STATE_INITIAL;
-//		}
-//		public void checkExpiration() {
-//			if (state != STATE_INITIAL && Utils.timeInterval(firstDown) > EXPIRATION_TIME_MS)
-//				cancel();
-//		}
-//		
-//		/// cancel current action and reset touch tracking state
-//		private boolean cancel() {
-//			if (state == STATE_INITIAL)
-//				return true;
-//			switch (state) {
-//			case STATE_DOWN_1:
-//			case STATE_SELECTION:
-//				clearSelection();
-//				break;
-//			case STATE_FLIPPING:
-//				stopAnimation(-1, -1);
-//				break;
-//			case STATE_WAIT_FOR_DOUBLE_CLICK:
-//			case STATE_DONE:
-//			case STATE_BRIGHTNESS:
-//				stopBrightnessControl(-1, -1);
-//				break;
-//			}
-//			state = STATE_DONE;
-//			unhiliteTapZone(); 
-//			currentTapHandler = new TapHandler();
-//			return true;
-//		}
+//	    private final static int STATE_INITIAL = 0; // no events yet
+//	    private final static int STATE_DOWN_1 = 1; // down first time
+//	    private final static int STATE_SELECTION = 3; // selection is started
+//	    private final static int STATE_FLIPPING = 4; // flipping is in progress
+//	    private final static int STATE_WAIT_FOR_DOUBLE_CLICK = 5; // flipping is in progress
+//	    private final static int STATE_DONE = 6; // done: no more tracking
+//	    private final static int STATE_BRIGHTNESS = 7; // brightness change in progress
 //
-//		/// perform action and reset touch tracking state
-//		private boolean performAction(final ReaderAction action, boolean checkForLinks) {
-//			log.d("performAction on touch: " + action);
-//			state = STATE_DONE;
+//	    private final static int EXPIRATION_TIME_MS = 180000;
 //
-//			currentTapHandler = new TapHandler();
+//	    int state = STATE_INITIAL;
 //
-//			if (!checkForLinks) {
-//				onAction(action);
-//				return true;
-//			}
-//			
-//			// check link before executing action
-//			mEngine.execute(new Task() {
-//				String link;
-//				ImageInfo image;
-//				Bookmark bookmark;
-//				public void work() {
-//					image = new ImageInfo();
-//					image.bufWidth = internalDX;
-//					image.bufHeight = internalDY;
-//					image.bufDpi = mActivity.getDensityDpi();
-//					if (doc.checkImage(start_x, start_y, image)) {
-//						return;
-//					}
-//					image = null;
-//					link = doc.checkLink(start_x, start_y, mActivity.getPalmTipPixels() / 2 );
-//					if ( link!=null ) {
-//						if ( link.startsWith("#") ) {
-//							log.d("go to " + link);
-//							doc.goLink(link);
-//							drawPage();
-//						}
-//						return;
-//					} 
-//					bookmark = doc.checkBookmark(start_x, start_y);
-//					if (bookmark != null && bookmark.getType() == Bookmark.TYPE_POSITION)
-//						bookmark = null;
-//				}
-//				public void done() {
-//					if (bookmark != null)
-//						bookmark = mBookInfo.findBookmark(bookmark);
-//					if (link == null && image == null && bookmark == null) {
-//						onAction(action);
-//					} else if (image != null) {
-//						startImageViewer(image);
-//					} else if (bookmark != null) {
-//						BookmarkEditDialog dlg = new BookmarkEditDialog(mActivity, ReaderView.this, bookmark, false);
-//						dlg.show();
-//					} else if (!link.startsWith("#")) {
-//						log.d("external link " + link);
-//						if (link.startsWith("http://")||link.startsWith("https://")) {
-//							mActivity.openURL(link);
-//						} else {
-//							// absolute path to file
-//							FileInfo fi = new FileInfo(link);
-//							if (fi.exists()) {
-//								mActivity.loadDocument(fi);
-//								return;
-//							}
-//							File baseDir = null;
-//							if (mBookInfo!=null && mBookInfo.getFileInfo()!=null) {
-//								if (!mBookInfo.getFileInfo().isArchive) {
-//									// relatively to base directory
-//									File f = new File(mBookInfo.getFileInfo().getBasePath());
-//									baseDir = f.getParentFile();
-//									String url = link;
-//									while (baseDir!=null && url!=null && url.startsWith("../")) {
-//										baseDir = baseDir.getParentFile();
-//										url = url.substring(3);
-//									}
-//									if (baseDir!=null && url!=null && url.length()>0) {
-//										fi = new FileInfo(baseDir.getAbsolutePath()+"/"+url);
-//										if (fi.exists()) {
-//											mActivity.loadDocument(fi);
-//											return;
-//										}
-//									}
-//								} else {
-//									// from archive
-//									fi = new FileInfo(mBookInfo.getFileInfo().getArchiveName() + FileInfo.ARC_SEPARATOR + link);
-//									if (fi.exists()) {
-//										mActivity.loadDocument(fi);
-//										return;
-//									}
-//								}
-//							}
-//							mActivity.showToast("Cannot open link " + link);
-//						}
-//					}
-//				}
-//			});
-//			return true;
-//		}
-//		
-//		private boolean startSelection() {
-//			state = STATE_SELECTION;
-//			// check link before executing action
-//			mEngine.execute(new Task() {
-//				ImageInfo image;
-//				Bookmark bookmark;
-//				public void work() {
-//					image = new ImageInfo();
-//					image.bufWidth = internalDX;
-//					image.bufHeight = internalDY;
-//					image.bufDpi = mActivity.getDensityDpi();
-//					if (!doc.checkImage(start_x, start_y, image))
-//						image = null;
-//					bookmark = doc.checkBookmark(start_x, start_y);
-//					if (bookmark != null && bookmark.getType() == Bookmark.TYPE_POSITION)
-//						bookmark = null;
-//				}
-//				public void done() {
-//					if (bookmark != null)
-//						bookmark = mBookInfo.findBookmark(bookmark);
-//					if (image != null) {
-//						cancel();
-//						startImageViewer(image);
-//					} else if (bookmark != null) {
-//						cancel();
-//						BookmarkEditDialog dlg = new BookmarkEditDialog(mActivity, ReaderView.this, bookmark, false);
-//						dlg.show();
-//					} else {
-//						updateSelection( start_x, start_y, start_x, start_y, false );
-//					}
-//				}
-//			});
-//			return true;
-//		}
-//		
-//		private boolean trackDoubleTap() {
-//			state = STATE_WAIT_FOR_DOUBLE_CLICK;
-//			BackgroundThread.instance().postGUI(new Runnable() {
-//				@Override
-//				public void run() {
-//					if (currentTapHandler == TapHandler.this && state == STATE_WAIT_FOR_DOUBLE_CLICK)
-//						performAction(shortTapAction, false);
-//				}
-//			}, DOUBLE_CLICK_INTERVAL);
-//			return true;
-//		}
-//		
-//		private boolean trackLongTap() {
-//			BackgroundThread.instance().postGUI(new Runnable() {
-//				@Override
-//				public void run() {
-//					if (currentTapHandler == TapHandler.this && state == STATE_DOWN_1) {
-//						if (longTapAction == ReaderAction.START_SELECTION)
-//							startSelection();
-//						else
-//							performAction(longTapAction, true);
-//					}
-//				}
-//			}, LONG_KEYPRESS_TIME);
-//			return true;
-//		}
-//		
-//		public boolean onTouchEvent(MotionEvent event) {
-//			int x = (int)event.getX();
-//			int y = (int)event.getY();
-//			
+//	    int start_x = 0;
+//	    int start_y = 0;
+//	    int width = 0;
+//	    int height = 0;
+//	    ReaderAction shortTapAction = ReaderAction.NONE;
+//	    ReaderAction longTapAction = ReaderAction.NONE;
+//	    ReaderAction doubleTapAction = ReaderAction.NONE;
+//	    long firstDown;
 //
-//			if (state == STATE_INITIAL && event.getAction() != MotionEvent.ACTION_DOWN)
-//				return unexpectedEvent(); // ignore unexpected event
-//			
-//			if (event.getAction() == MotionEvent.ACTION_UP) {
-//				long duration = Utils.timeInterval(firstDown);
-//				switch (state) {
-//				case STATE_DOWN_1:
-//					if ( hiliteTapZoneOnTap ) {
-//						hiliteTapZone( true, x, y, width, height );
-//						scheduleUnhilite( LONG_KEYPRESS_TIME );
-//					}
-//					if (duration > LONG_KEYPRESS_TIME) {
-//						if (longTapAction == ReaderAction.START_SELECTION)
-//							return startSelection();
-//						return performAction(longTapAction, true);
-//					}
-//					if (doubleTapAction.isNone())
-//						return performAction(shortTapAction, false);
-//					// start possible double tap tracking
-//					return trackDoubleTap();
-//				case STATE_FLIPPING:
-//					stopAnimation(x, y);
-//					state = STATE_DONE;
-//					return cancel();
-//				case STATE_BRIGHTNESS:
-//					stopBrightnessControl(x, y);
-//					state = STATE_DONE;
-//					return cancel();
-//				case STATE_SELECTION:
-//					updateSelection( start_x, start_y, x, y, true );
-//					selectionModeActive = false;
-//					state = STATE_DONE;
-//					return cancel();
-//				}
-//			} else if (event.getAction() == MotionEvent.ACTION_DOWN) {
-//				switch (state) {
-//				case STATE_INITIAL:
-//					start_x = x;
-//					start_y = y;
-//					width = getWidth();
-//					height = getHeight();
-//					int zone = getTapZone(x, y, width, height);
-//					shortTapAction = findTapZoneAction(zone, TAP_ACTION_TYPE_SHORT);
-//					longTapAction = findTapZoneAction(zone, TAP_ACTION_TYPE_LONGPRESS);
-//					doubleTapAction = findTapZoneAction(zone, TAP_ACTION_TYPE_DOUBLE);
-//					firstDown = Utils.timeStamp();
-//					if (selectionModeActive) {
-//						startSelection();
-//					} else {
-//						state = STATE_DOWN_1;
-//						trackLongTap();
-//					}
-//					return true;
-//				case STATE_DOWN_1:
-//				case STATE_BRIGHTNESS:
-//				case STATE_FLIPPING:
-//				case STATE_SELECTION:
-//					return unexpectedEvent();
-//				case STATE_WAIT_FOR_DOUBLE_CLICK:
-//					if (doubleTapAction == ReaderAction.START_SELECTION)
-//						return startSelection();
-//					return performAction(doubleTapAction, true);
-//				}
-//			} else if (event.getAction() == MotionEvent.ACTION_MOVE) {
-//				int dx = x - start_x;
-//				int dy = y - start_y;
-//				int adx = dx > 0 ? dx : -dx;
-//				int ady = dy > 0 ? dy : -dy;
-//				int distance = adx + ady;
-//				int dragThreshold = mActivity.getPalmTipPixels();
-//				switch (state) {
-//				case STATE_DOWN_1:
-//					if (distance < dragThreshold)
-//						return true;
-//					if (!DeviceInfo.EINK_SCREEN && isBacklightControlFlick != BACKLIGHT_CONTROL_FLICK_NONE && ady > adx) {
-//						// backlight control enabled
-//						if (start_x < dragThreshold * 170 / 100 && isBacklightControlFlick == 1
-//								|| start_x > width - dragThreshold * 170 / 100 && isBacklightControlFlick == 2) {
-//							// brightness
-//							state = STATE_BRIGHTNESS;
-//							startBrightnessControl(start_x, start_y);
-//							return true;
-//						}
-//					}
-//					boolean isPageMode = mSettings.getInt(PROP_PAGE_VIEW_MODE, 1) == 1;
-//					int dir = isPageMode ? x - start_x : y - start_y;
-//					if (gesturePageFlippingEnabled) {
-//						if (pageFlipAnimationSpeedMs == 0 || DeviceInfo.EINK_SCREEN) {
-//							// no animation
-//							return performAction(dir < 0 ? ReaderAction.PAGE_DOWN : ReaderAction.PAGE_UP, false);
-//						}
-//						startAnimation(start_x, start_y, width, height, x, y);
-//						updateAnimation(x, y);
-//						state = STATE_FLIPPING;
-//					}
-//					return true;
-//				case STATE_FLIPPING:
-//					updateAnimation(x, y);
-//					return true;
-//				case STATE_BRIGHTNESS:
-//					updateBrightnessControl(x, y);
-//					return true;
-//				case STATE_WAIT_FOR_DOUBLE_CLICK:
-//					return true;
-//				case STATE_SELECTION:
-//					updateSelection( start_x, start_y, x, y, false );
-//					break;
-//				}
-//				
-//			} else if (event.getAction() == MotionEvent.ACTION_OUTSIDE) {
-//				return unexpectedEvent();
-//			}
-//			return true;
-//		}
+
+//	    /// handle unexpected event for state: stop tracking
+//	    private boolean unexpectedEvent() {
+//	        cancel();
+//	        return true; // ignore
+//	    }
+//
+//	    public boolean isInitialState() {
+//	        return state == STATE_INITIAL;
+//	    }
+//	    public void checkExpiration() {
+//	        if (state != STATE_INITIAL && Utils.timeInterval(firstDown) > EXPIRATION_TIME_MS)
+//	            cancel();
+//	    }
+//
+//	    /// cancel current action and reset touch tracking state
+//	    private boolean cancel() {
+//	        if (state == STATE_INITIAL)
+//	            return true;
+//	        switch (state) {
+//	        case STATE_DOWN_1:
+//	        case STATE_SELECTION:
+//	            clearSelection();
+//	            break;
+//	        case STATE_FLIPPING:
+//	            stopAnimation(-1, -1);
+//	            break;
+//	        case STATE_WAIT_FOR_DOUBLE_CLICK:
+//	        case STATE_DONE:
+//	        case STATE_BRIGHTNESS:
+//	            stopBrightnessControl(-1, -1);
+//	            break;
+//	        }
+//	        state = STATE_DONE;
+//	        unhiliteTapZone(); 
+//	        currentTapHandler = new TapHandler();
+//	        return true;
+//	    }
+//
+//	    /// perform action and reset touch tracking state
+//	    private boolean performAction(final ReaderAction action, boolean checkForLinks) {
+//	        log.d("performAction on touch: " + action);
+//	        state = STATE_DONE;
+//
+//	        currentTapHandler = new TapHandler();
+//
+//	        if (!checkForLinks) {
+//	            onAction(action);
+//	            return true;
+//	        }
+//
+//	        // check link before executing action
+//	        mEngine.execute(new Task() {
+//	            String link;
+//	            ImageInfo image;
+//	            Bookmark bookmark;
+//	            public void work() {
+//	                image = new ImageInfo();
+//	                image.bufWidth = internalDX;
+//	                image.bufHeight = internalDY;
+//	                image.bufDpi = mActivity.getDensityDpi();
+//	                if (doc.checkImage(start_x, start_y, image)) {
+//	                    return;
+//	                }
+//	                image = null;
+//	                link = doc.checkLink(start_x, start_y, mActivity.getPalmTipPixels() / 2 );
+//	                if ( link!=null ) {
+//	                    if ( link.startsWith("#") ) {
+//	                        log.d("go to " + link);
+//	                        doc.goLink(link);
+//	                        drawPage();
+//	                    }
+//	                    return;
+//	                } 
+//	                bookmark = doc.checkBookmark(start_x, start_y);
+//	                if (bookmark != null && bookmark.getType() == Bookmark.TYPE_POSITION)
+//	                    bookmark = null;
+//	            }
+//	            public void done() {
+//	                if (bookmark != null)
+//	                    bookmark = mBookInfo.findBookmark(bookmark);
+//	                if (link == null && image == null && bookmark == null) {
+//	                    onAction(action);
+//	                } else if (image != null) {
+//	                    startImageViewer(image);
+//	                } else if (bookmark != null) {
+//	                    BookmarkEditDialog dlg = new BookmarkEditDialog(mActivity, ReaderView.this, bookmark, false);
+//	                    dlg.show();
+//	                } else if (!link.startsWith("#")) {
+//	                    log.d("external link " + link);
+//	                    if (link.startsWith("http://")||link.startsWith("https://")) {
+//	                        mActivity.openURL(link);
+//	                    } else {
+//	                        // absolute path to file
+//	                        FileInfo fi = new FileInfo(link);
+//	                        if (fi.exists()) {
+//	                            mActivity.loadDocument(fi);
+//	                            return;
+//	                        }
+//	                        File baseDir = null;
+//	                        if (mBookInfo!=null && mBookInfo.getFileInfo()!=null) {
+//	                            if (!mBookInfo.getFileInfo().isArchive) {
+//	                                // relatively to base directory
+//	                                File f = new File(mBookInfo.getFileInfo().getBasePath());
+//	                                baseDir = f.getParentFile();
+//	                                String url = link;
+//	                                while (baseDir!=null && url!=null && url.startsWith("../")) {
+//	                                    baseDir = baseDir.getParentFile();
+//	                                    url = url.substring(3);
+//	                                }
+//	                                if (baseDir!=null && url!=null && url.length()>0) {
+//	                                    fi = new FileInfo(baseDir.getAbsolutePath()+"/"+url);
+//	                                    if (fi.exists()) {
+//	                                        mActivity.loadDocument(fi);
+//	                                        return;
+//	                                    }
+//	                                }
+//	                            } else {
+//	                                // from archive
+//	                                fi = new FileInfo(mBookInfo.getFileInfo().getArchiveName() + FileInfo.ARC_SEPARATOR + link);
+//	                                if (fi.exists()) {
+//	                                    mActivity.loadDocument(fi);
+//	                                    return;
+//	                                }
+//	                            }
+//	                        }
+//	                        mActivity.showToast("Cannot open link " + link);
+//	                    }
+//	                }
+//	            }
+//	        });
+//	        return true;
+//	    }
+//
+//	    private boolean startSelection() {
+//	        state = STATE_SELECTION;
+//	        // check link before executing action
+//	        mEngine.execute(new Task() {
+//	            ImageInfo image;
+//	            Bookmark bookmark;
+//	            public void work() {
+//	                image = new ImageInfo();
+//	                image.bufWidth = internalDX;
+//	                image.bufHeight = internalDY;
+//	                image.bufDpi = mActivity.getDensityDpi();
+//	                if (!doc.checkImage(start_x, start_y, image))
+//	                    image = null;
+//	                bookmark = doc.checkBookmark(start_x, start_y);
+//	                if (bookmark != null && bookmark.getType() == Bookmark.TYPE_POSITION)
+//	                    bookmark = null;
+//	            }
+//	            public void done() {
+//	                if (bookmark != null)
+//	                    bookmark = mBookInfo.findBookmark(bookmark);
+//	                if (image != null) {
+//	                    cancel();
+//	                    startImageViewer(image);
+//	                } else if (bookmark != null) {
+//	                    cancel();
+//	                    BookmarkEditDialog dlg = new BookmarkEditDialog(mActivity, ReaderView.this, bookmark, false);
+//	                    dlg.show();
+//	                } else {
+//	                    updateSelection( start_x, start_y, start_x, start_y, false );
+//	                }
+//	            }
+//	        });
+//	        return true;
+//	    }
+//
+//	    private boolean trackDoubleTap() {
+//	        state = STATE_WAIT_FOR_DOUBLE_CLICK;
+//	        BackgroundThread.instance().postGUI(new Runnable() {
+//	            @Override
+//	            public void run() {
+//	                if (currentTapHandler == TapHandler.this && state == STATE_WAIT_FOR_DOUBLE_CLICK)
+//	                    performAction(shortTapAction, false);
+//	            }
+//	        }, DOUBLE_CLICK_INTERVAL);
+//	        return true;
+//	    }
+//
+//	    private boolean trackLongTap() {
+//	        BackgroundThread.instance().postGUI(new Runnable() {
+//	            @Override
+//	            public void run() {
+//	                if (currentTapHandler == TapHandler.this && state == STATE_DOWN_1) {
+//	                    if (longTapAction == ReaderAction.START_SELECTION)
+//	                        startSelection();
+//	                    else
+//	                        performAction(longTapAction, true);
+//	                }
+//	            }
+//	        }, LONG_KEYPRESS_TIME);
+//	        return true;
+//	    }
+//
+//	    public boolean onTouchEvent(MotionEvent event) {
+//	        int x = (int)event.getX();
+//	        int y = (int)event.getY();
+//
+//
+//	        if (state == STATE_INITIAL && event.getAction() != MotionEvent.ACTION_DOWN)
+//	            return unexpectedEvent(); // ignore unexpected event
+//
+//	        if (event.getAction() == MotionEvent.ACTION_UP) {
+//	            long duration = Utils.timeInterval(firstDown);
+//	            switch (state) {
+//	            case STATE_DOWN_1:
+//	                if ( hiliteTapZoneOnTap ) {
+//	                    hiliteTapZone( true, x, y, width, height );
+//	                    scheduleUnhilite( LONG_KEYPRESS_TIME );
+//	                }
+//	                if (duration > LONG_KEYPRESS_TIME) {
+//	                    if (longTapAction == ReaderAction.START_SELECTION)
+//	                        return startSelection();
+//	                    return performAction(longTapAction, true);
+//	                }
+//	                if (doubleTapAction.isNone())
+//	                    return performAction(shortTapAction, false);
+//	                // start possible double tap tracking
+//	                return trackDoubleTap();
+//	            case STATE_FLIPPING:
+//	                stopAnimation(x, y);
+//	                state = STATE_DONE;
+//	                return cancel();
+//	            case STATE_BRIGHTNESS:
+//	                stopBrightnessControl(x, y);
+//	                state = STATE_DONE;
+//	                return cancel();
+//	            case STATE_SELECTION:
+//	                updateSelection( start_x, start_y, x, y, true );
+//	                selectionModeActive = false;
+//	                state = STATE_DONE;
+//	                return cancel();
+//	            }
+//	        } else if (event.getAction() == MotionEvent.ACTION_DOWN) {
+//	            switch (state) {
+//	            case STATE_INITIAL:
+//	                start_x = x;
+//	                start_y = y;
+//	                width = getWidth();
+//	                height = getHeight();
+//	                int zone = getTapZone(x, y, width, height);
+//	                shortTapAction = findTapZoneAction(zone, TAP_ACTION_TYPE_SHORT);
+//	                longTapAction = findTapZoneAction(zone, TAP_ACTION_TYPE_LONGPRESS);
+//	                doubleTapAction = findTapZoneAction(zone, TAP_ACTION_TYPE_DOUBLE);
+//	                firstDown = Utils.timeStamp();
+//	                if (selectionModeActive) {
+//	                    startSelection();
+//	                } else {
+//	                    state = STATE_DOWN_1;
+//	                    trackLongTap();
+//	                }
+//	                return true;
+//	            case STATE_DOWN_1:
+//	            case STATE_BRIGHTNESS:
+//	            case STATE_FLIPPING:
+//	            case STATE_SELECTION:
+//	                return unexpectedEvent();
+//	            case STATE_WAIT_FOR_DOUBLE_CLICK:
+//	                if (doubleTapAction == ReaderAction.START_SELECTION)
+//	                    return startSelection();
+//	                return performAction(doubleTapAction, true);
+//	            }
+//	        } else if (event.getAction() == MotionEvent.ACTION_MOVE) {
+//	            int dx = x - start_x;
+//	            int dy = y - start_y;
+//	            int adx = dx > 0 ? dx : -dx;
+//	            int ady = dy > 0 ? dy : -dy;
+//	            int distance = adx + ady;
+//	            int dragThreshold = mActivity.getPalmTipPixels();
+//	            switch (state) {
+//	            case STATE_DOWN_1:
+//	                if (distance < dragThreshold)
+//	                    return true;
+//	                if (!DeviceInfo.EINK_SCREEN && isBacklightControlFlick != BACKLIGHT_CONTROL_FLICK_NONE && ady > adx) {
+//	                    // backlight control enabled
+//	                    if (start_x < dragThreshold * 170 / 100 && isBacklightControlFlick == 1
+//	                            || start_x > width - dragThreshold * 170 / 100 && isBacklightControlFlick == 2) {
+//	                        // brightness
+//	                        state = STATE_BRIGHTNESS;
+//	                        startBrightnessControl(start_x, start_y);
+//	                        return true;
+//	                    }
+//	                }
+//	                boolean isPageMode = mSettings.getInt(PROP_PAGE_VIEW_MODE, 1) == 1;
+//	                int dir = isPageMode ? x - start_x : y - start_y;
+//	                if (gesturePageFlippingEnabled) {
+//	                    if (pageFlipAnimationSpeedMs == 0 || DeviceInfo.EINK_SCREEN) {
+//	                        // no animation
+//	                        return performAction(dir < 0 ? ReaderAction.PAGE_DOWN : ReaderAction.PAGE_UP, false);
+//	                    }
+//	                    startAnimation(start_x, start_y, width, height, x, y);
+//	                    updateAnimation(x, y);
+//	                    state = STATE_FLIPPING;
+//	                }
+//	                return true;
+//	            case STATE_FLIPPING:
+//	                updateAnimation(x, y);
+//	                return true;
+//	            case STATE_BRIGHTNESS:
+//	                updateBrightnessControl(x, y);
+//	                return true;
+//	            case STATE_WAIT_FOR_DOUBLE_CLICK:
+//	                return true;
+//	            case STATE_SELECTION:
+//	                updateSelection( start_x, start_y, x, y, false );
+//	                break;
+//	            }
+//
+//	        } else if (event.getAction() == MotionEvent.ACTION_OUTSIDE) {
+//	            return unexpectedEvent();
+//	        }
+//	        return true;
+//	    }
 //	}
-//>>>>>>> origin/master
-	
+
 	@Override
 	public boolean onTouchEvent(MotionEvent event) {
 		
@@ -2056,6 +2055,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 						mBookInfo.setShortcutBookmark(shortcut, bm);
 					getSyncService().saveBookmark(mBookInfo.getFileInfo().getPathName(), bm, false);
 					mActivity.getDB().saveBookInfo(mBookInfo);
+
 					String s;
 					if ( shortcut==0 )
 						s = mActivity.getString(R.string.toast_position_bookmark_is_set);
@@ -3755,7 +3755,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
             
             RefValue<Bitmap> result = new RefValue<Bitmap>();
             if (!OnyxCmsCenter.getThumbnail(ctx, data, result)) {
-//                BitmapDrawable b = this.mActivity.getHistory().getBookCoverpageImage(null, fi); 
+//                BitmapDrawable b = this.mActivity.getHistory().getBookCoverpageImage(null, fi);
                 BitmapDrawable b = new BitmapDrawable(getResources(), result.getValue());
                 Log.d(TAG, "cover not null: " + (b != null));
                 if (b != null) {
@@ -4094,10 +4094,10 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 //				invalidate();
 //			}
 //    		if (mOpened)
-		    ReaderView.this.epdInvalidateHelper();
-   			mEngine.hideProgress();
    			//hideProgress();
-
+//
+//		    ReaderView.this.epdInvalidateHelper();
+//   		mEngine.hideProgress();
    			if ( doneHandler!=null )
    				doneHandler.run();
    			scheduleGc();

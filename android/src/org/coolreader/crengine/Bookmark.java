@@ -234,12 +234,10 @@ public class Bookmark {
 	private String posText;
 	private String commentText;
 	private long timeStamp = System.currentTimeMillis(); // UTC timestamp
-	private boolean modified;
 	private int bookmarkPage;
 
 	@Override
 	public String toString() {
 		return "Bookmark[t=" + type + ", start=" + startPos + "]";
 	}
-	
 }
