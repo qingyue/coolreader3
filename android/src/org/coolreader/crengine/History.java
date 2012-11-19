@@ -1,10 +1,16 @@
 package org.coolreader.crengine;
 
+import java.io.ByteArrayInputStream;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 
 import org.coolreader.CoolReader;
 import org.coolreader.db.CRDBService;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.util.Log;
 
@@ -252,6 +258,45 @@ public class History extends FileInfoChangeSource {
         {
             for ( int i=0; i<list.size(); i++ )
                 list.get(i).drawable = null;
+        }
+    }
+
+	private static Method bitmapSetDensityMethod;
+    private static Method canvasSetDensityMethod;
+    private static boolean isNewApiChecked;
+    public BitmapDrawable decodeCoverPage( byte[] data )
+    {
+        try {
+            ByteArrayInputStream is = new ByteArrayInputStream(data);
+            Bitmap srcbmp = BitmapFactory.decodeStream(is);
+
+            if ( !isNewApiChecked ) {
+                isNewApiChecked = true;
+                try {
+                    bitmapSetDensityMethod = Bitmap.class.getMethod("setDensity", new Class[] {int.class});
+                    canvasSetDensityMethod = Canvas.class.getMethod("setDensity", new Class[] {int.class});
+                } catch ( Exception e ) {
+                    L.w("No Bitmap.setDensity() method found");
+                }
+            }
+
+            Bitmap bmp = Bitmap.createBitmap(coverPageWidth, coverPageHeight, Bitmap.Config.ARGB_8888);
+            if ( bitmapSetDensityMethod!=null )
+                bitmapSetDensityMethod.invoke(bmp, Bitmap.DENSITY_NONE);
+            //bmp.setDensity(Bitmap.DENSITY_NONE); // mCoolReader.getResources().getDisplayMetrics().densityDpi
+            Canvas canvas = new Canvas(bmp);
+            if ( canvasSetDensityMethod!=null )
+                canvasSetDensityMethod.invoke(canvas, Bitmap.DENSITY_NONE);
+            //canvas.setDensity(Bitmap.DENSITY_NONE); // mCoolReader.getResources().getDisplayMetrics().densityDpi
+            canvas.drawBitmap(srcbmp, new Rect(0, 0, srcbmp.getWidth(), srcbmp.getHeight()),
+                    new Rect(0, 0, coverPageWidth, coverPageHeight), null);
+            Log.d("cr3", "cover page format: " + srcbmp.getWidth() + "x" + srcbmp.getHeight());
+            BitmapDrawable res = new BitmapDrawable(bmp);
+
+            return res;
+        } catch ( Exception e ) {
+            Log.e("cr3", "exception while decoding coverpage " + e.getMessage());
+            return null;
         }
     }
 }
