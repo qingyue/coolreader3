@@ -57,6 +57,7 @@ import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings;
 import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings.onSettingsFontFaceListener;
 import com.onyx.android.sdk.ui.dialog.DialogGotoPage;
 import com.onyx.android.sdk.ui.dialog.DialogGotoPage.AcceptNumberListener;
+import com.onyx.android.sdk.ui.dialog.DialogLoading;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.FontSizeProperty;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.LineSpacingProperty;
@@ -4599,7 +4600,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 				//log.v("before draw(canvas)");
 				if ( canvas!=null ) {
 					if (DeviceInfo.EINK_SCREEN){
-//						EinkScreen.PrepareController(this, isPartially);
+						EinkScreen.PrepareController(this, isPartially);
 					}
 					callback.drawTo(canvas);
 					EpdController.invalidate(this, EpdController.UpdateMode.GU);
@@ -5377,23 +5378,43 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 
 	private int currentProgressPosition = 1;
 	private int currentProgressTitle = R.string.progress_loading;
+	private DialogLoading mDialogLoading = null;
+
 	private void showProgress(int position, int titleResource) {
 		log.v("showProgress(" + position + ")");
-		boolean first = currentProgressTitle == 0;
-		if (currentProgressPosition != position || currentProgressTitle != titleResource) {
-			currentProgressPosition = position;
-			currentProgressTitle = titleResource;
-			draw(!first);
-		}
+
+        if (currentProgressTitle == titleResource) {
+            if (mDialogLoading == null) {
+                mDialogLoading = new DialogLoading(mActivity, getResources().getString(currentProgressTitle));
+                mDialogLoading.show();
+            }
+            else {
+                if (!mDialogLoading.isShowing()) {
+                    mDialogLoading.show();
+                }
+            }
+        }else {
+            boolean first = currentProgressTitle == 0;
+            if (currentProgressPosition != position || currentProgressTitle != titleResource) {
+                currentProgressPosition = position;
+                currentProgressTitle = titleResource;
+                draw(!first);
+            }
+        }
 	}
 	
 	private void hideProgress() {
 		log.v("hideProgress()");
-		if (currentProgressTitle != 0) {
-			currentProgressPosition = -1;
-			currentProgressTitle = 0;
+
+		if (mDialogLoading != null && mDialogLoading.isShowing()) {
+            mDialogLoading.dismiss();
+        }
+
+//		if (currentProgressTitle != 0) {
+//			currentProgressPosition = -1;
+//			currentProgressTitle = 0;
 			draw(false);
-		}
+//		}
 	}
 	
 	private boolean isProgressActive() {
@@ -5723,7 +5744,8 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
     		if (isProgressActive()) {
         		log.d("onDraw() -- drawing progress " + (currentProgressPosition / 100));
         		drawPageBackground(canvas);
-        		doDrawProgress(canvas, currentProgressPosition, currentProgressTitle);
+//        		doDrawProgress(canvas, currentProgressPosition, currentProgressTitle);
+                showProgress(currentProgressPosition, currentProgressTitle);
     		} else if (mInitialized && mCurrentPageInfo != null && mCurrentPageInfo.bitmap != null) {
         		log.d("onDraw() -- drawing page image");
 
