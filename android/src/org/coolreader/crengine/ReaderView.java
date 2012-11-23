@@ -38,6 +38,14 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.widget.LinearLayout;
 
+import com.onyx.android.sdk.ui.data.DirectoryItem;
+import com.onyx.android.sdk.ui.dialog.AnnotationItem;
+import com.onyx.android.sdk.ui.dialog.DialogDirectory;
+import com.onyx.android.sdk.ui.dialog.DialogDirectory.DirectoryTab;
+import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings;
+import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings.onSettingsFontFaceListener;
+import com.onyx.android.sdk.ui.dialog.DialogGotoPage;
+import com.onyx.android.sdk.ui.dialog.DialogGotoPage.AcceptNumberListener;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.FontSizeProperty;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.LineSpacingProperty;
@@ -1796,7 +1804,8 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	{
 		boolean newBool = !mActivity.isFullscreen();
 		String newValue = newBool ? "1" : "0";
-		saveSetting(PROP_APP_FULLSCREEN, newValue);
+		mSettings.setProperty(PROP_APP_FULLSCREEN, newValue);
+		ReaderView.this.saveSettings(mSettings);
 		mActivity.setFullscreen(newBool);
 	}
 	
@@ -6013,263 +6022,339 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
         });
 
         post(new CreateViewTask( props ));
-
-        DialogReaderMenu.IMenuHandler handler = new DialogReaderMenu.IMenuHandler()
-        {
-
-            @Override
-            public void zoomToWidth()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void zoomToPage()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void zoomToHeight()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void zoomOut()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void zoomIn()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void zoomByValue(double z)
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void zoomByTwoPoints()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void zoomBySelection()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void updateCurrentPage(LinearLayout l)
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void toggleFullscreen()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void toggleFontEmbolden()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public boolean showZoomSettings()
-            {
-                // TODO Auto-generated method stub
-                return false;
-            }
-
-            @Override
-            public void showTTsView()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void showTOC()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void showSetFontView()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void showLineSpacingView()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void showGoToPageDialog()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void showBookMarks()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void showAnnotation()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void setScreenRefresh()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void setLineSpacing(LineSpacingProperty property)
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void setFontFace()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void searchContent()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void rotationScreen(int i)
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void previousPage()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void nextPage()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public boolean isFullscreen()
-            {
-                // TODO Auto-generated method stub
-                return false;
-            }
-
-            @Override
-            public void increaseFontSize()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void gotoPage(int i)
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public int getPageIndex()
-            {
-                // TODO Auto-generated method stub
-                return 0;
-            }
-
-            @Override
-            public int getPageCount()
-            {
-                // TODO Auto-generated method stub
-                return 0;
-            }
-
-            @Override
-            public String getFontFace()
-            {
-                // TODO Auto-generated method stub
-                return null;
-            }
-
-            @Override
-            public void decreaseFontSize()
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void changeRotationScreen(RotationScreenProperty property)
-            {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void changeFontsize(FontSizeProperty property)
-            {
-                // TODO Auto-generated method stub
-
-            }
-        };
-
-        mReaderMenu = new DialogReaderMenu(mActivity, handler);
     }
 
 	private void showDialogReaderMenu()
 	{
+	    DialogReaderMenu.IMenuHandler handler = new DialogReaderMenu.IMenuHandler()
+	    {
+
+	        @Override
+	        public void zoomToWidth()
+	        {
+	            // TODO Auto-generated method stub
+
+	        }
+
+	        @Override
+	        public void zoomToPage()
+	        {
+	            // TODO Auto-generated method stub
+
+	        }
+
+	        @Override
+	        public void zoomToHeight()
+	        {
+	            // TODO Auto-generated method stub
+
+	        }
+
+	        @Override
+	        public void zoomOut()
+	        {
+	            // TODO Auto-generated method stub
+
+	        }
+
+	        @Override
+	        public void zoomIn()
+	        {
+	            // TODO Auto-generated method stub
+
+	        }
+
+	        @Override
+	        public void zoomByValue(double z)
+	        {
+	            // TODO Auto-generated method stub
+
+	        }
+
+	        @Override
+	        public void zoomByTwoPoints()
+	        {
+	            // TODO Auto-generated method stub
+
+	        }
+
+	        @Override
+	        public void zoomBySelection()
+	        {
+	            // TODO Auto-generated method stub
+
+	        }
+
+	        @Override
+	        public void updateCurrentPage(LinearLayout l)
+	        {
+	            // TODO Auto-generated method stub
+
+	        }
+
+	        @Override
+	        public void toggleFullscreen()
+	        {
+	            ReaderView.this.toggleFullscreen();
+	            mReaderMenu.dismiss();
+	        }
+
+	        @Override
+	        public void toggleFontEmbolden()
+	        {
+	            // TODO Auto-generated method stub
+
+	        }
+
+	        @Override
+	        public boolean showZoomSettings()
+	        {
+	            // TODO Auto-generated method stub
+	            return false;
+	        }
+
+	        @Override
+	        public void showTTsView()
+	        {
+	            mReaderMenu.dismiss();
+
+	            mActivity.initTTS(new TTS.OnTTSCreatedListener()
+	            {
+
+	                @Override
+	                public void onCreated(TTS tts)
+	                {
+	                    TTSToolbarDlg.showDialog(mActivity, ReaderView.this, tts);
+	                }
+	            });
+	        }
+
+	        @Override
+	        public void showTOC()
+	        {
+	            ReaderView.this.showDirectoyDialog(DirectoryTab.toc);
+	        }
+
+	        @Override
+	        public void showSetFontView()
+	        {
+	            // TODO Auto-generated method stub
+
+	        }
+
+	        @Override
+	        public void showLineSpacingView()
+	        {
+	            // TODO Auto-generated method stub
+
+	        }
+
+	        @Override
+	        public void showGoToPageDialog()
+	        {
+	            DialogGotoPage dialogGotoPage = new DialogGotoPage(mActivity, mReaderMenu);
+	            dialogGotoPage.setAcceptNumberListener(new AcceptNumberListener()
+	            {
+
+	                @Override
+	                public void onAcceptNumber(int num)
+	                {
+	                    ReaderView.this.goToPage(num);
+	                    mReaderMenu.dismiss();
+	                }
+	            });
+	            dialogGotoPage.show();
+	        }
+
+	        @Override
+	        public void showBookMarks()
+	        {
+	            ReaderView.this.showDirectoyDialog(DirectoryTab.bookmark);
+	        }
+
+	        @Override
+	        public void showAnnotation()
+	        {
+	            ReaderView.this.showDirectoyDialog(DirectoryTab.annotation);
+	        }
+
+	        @Override
+	        public void setScreenRefresh()
+	        {
+	            // TODO Auto-generated method stub
+
+	        }
+
+	        @Override
+	        public void setLineSpacing(LineSpacingProperty property)
+	        {
+	            switchInterlineSpacing(property);
+	        }
+
+	        @Override
+	        public void setFontFace()
+	        {
+	            String currentFontFace = mSettings.getProperty(PROP_FONT_FACE, "");
+	            DialogFontFaceSettings font_face_dialog =
+	                    new DialogFontFaceSettings(mActivity, mEngine.getFontFaceList(), currentFontFace, mReaderMenu);
+	            font_face_dialog.show();
+	            font_face_dialog.setOnSettingsFontFaceListener(new onSettingsFontFaceListener()
+	            {
+
+	                @Override
+	                public void settingfontFace(int location)
+	                {
+	                    mSettings.setProperty(PROP_FONT_FACE, mEngine.getFontFaceList()[location]);
+	                    ReaderView.this.saveSettings(mSettings);
+                        syncViewSettings(getSettings(), true, true);
+	                    mReaderMenu.setButtonFontFaceText(mEngine.getFontFaceList()[location]);
+	                }
+	            });
+	        }
+
+	        @Override
+	        public void searchContent()
+	        {
+	            ReaderView.this.showSearchDialog(null);
+	        }
+
+	        @Override
+	        public void rotationScreen(int i)
+	        {
+	            // TODO Auto-generated method stub
+
+	        }
+
+	        @Override
+	        public void previousPage()
+	        {
+	            currentTapHandler.performAction(ReaderAction.PAGE_UP, false);
+
+	            PositionProperties pos = doc.getPositionProps(null);
+	            mReaderMenu.setPageIndex(pos.pageNumber + 1);
+	            mReaderMenu.setPageCount(pos.pageCount);
+	        }
+
+	        @Override
+	        public void nextPage()
+	        {
+	            currentTapHandler.performAction(ReaderAction.PAGE_DOWN, false);
+
+	            PositionProperties pos = doc.getPositionProps(null);
+	            mReaderMenu.setPageIndex(pos.pageNumber + 1);
+	            mReaderMenu.setPageCount(pos.pageCount);
+	        }
+
+	        @Override
+	        public boolean isFullscreen()
+	        {
+	            return mActivity.isFullscreen();
+	        }
+
+	        @Override
+	        public void increaseFontSize()
+	        {
+	            ReaderView.this.onAction(ReaderAction.ZOOM_IN);
+	        }
+
+	        @Override
+	        public void gotoPage(int i)
+	        {
+	            ReaderView.this.goToPage(i);
+	            mReaderMenu.dismiss();
+	        }
+
+	        @Override
+	        public int getPageIndex()
+	        {
+	            PositionProperties pos = doc.getPositionProps(null);
+	            return pos.pageNumber + 1;
+	        }
+
+	        @Override
+	        public int getPageCount()
+	        {
+	            PositionProperties pos = doc.getPositionProps(null);
+	            return pos.pageCount;
+	        }
+
+	        @Override
+	        public String getFontFace()
+	        {
+	            return mSettings.getProperty(PROP_FONT_FACE, "");
+	        }
+
+	        @Override
+	        public void decreaseFontSize()
+	        {
+	            ReaderView.this.onAction(ReaderAction.ZOOM_OUT);
+	        }
+
+	        @Override
+	        public void changeRotationScreen(RotationScreenProperty property)
+	        {
+	            if (property == RotationScreenProperty.rotation_0) {
+	                mReaderMenu.dismiss();
+	                toggleScreenOrientation(0);
+	            }
+	            else if (property == RotationScreenProperty.rotation_90) {
+	                mReaderMenu.dismiss();
+	                toggleScreenOrientation(3);
+	            }
+	            else if (property == RotationScreenProperty.rotation_180) {
+	                mReaderMenu.dismiss();
+	                toggleScreenOrientation(2);
+	            }
+	            else if (property == RotationScreenProperty.rotation_270) {
+	                mReaderMenu.dismiss();
+	                toggleScreenOrientation(1);
+	            }
+
+	        }
+
+	        @Override
+	        public void changeFontsize(FontSizeProperty property)
+	        {
+	            // TODO Auto-generated method stub
+
+	        }
+	    };
+
+        mReaderMenu = new DialogReaderMenu(mActivity, handler);
 	    mReaderMenu.show();
 	}
+
+	/**
+     * @author qingyue
+     * @param orientation
+     */
+    private void toggleScreenOrientation(int orientation)
+    {
+        mSettings.setProperty(PROP_APP_SCREEN_ORIENTATION, String.valueOf(orientation));
+        ReaderView.this.saveSettings(mSettings);
+        mActivity.setScreenOrientation(orientation);
+    }
+
+    /**
+     * @author qingyue
+     * @param property
+     */
+    private void switchInterlineSpacing(LineSpacingProperty property) {
+        int line_spacing = 0;
+        if (property == LineSpacingProperty.normal) {
+            line_spacing = 100;
+        }
+        else if (property == LineSpacingProperty.big) {
+            line_spacing = 130;
+        }
+        else if (property == LineSpacingProperty.small) {
+            line_spacing = 80;
+        }
+
+        mSettings.setProperty(PROP_INTERLINE_SPACE, String.valueOf(line_spacing));
+        ReaderView.this.saveSettings(mSettings);
+        syncViewSettings(getSettings(), true, true);
+    }
 	
 	private void switchFontFace(int direction) {
 		String currentFontFace = mSettings.getProperty(PROP_FONT_FACE, "");
@@ -6360,4 +6445,49 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 		});
 	}
 
+	private void showDirectoyDialog(DirectoryTab tab)
+    {
+        TOCItem toc = doc.getTOC();
+        ArrayList<DirectoryItem> tocItems = new ArrayList<DirectoryItem>();
+        for (int i = 0; i < toc.getChildCount(); i++) {
+            TOCItem tocItem = toc.getChild(i);
+            DirectoryItem item = new DirectoryItem(tocItem.getName(), tocItem.getPage() + 1, tocItem);
+            tocItems.add(item);
+        }
+
+        BookInfo bookInfo = ReaderView.this.getBookInfo();
+        ArrayList<DirectoryItem> bookmarkItems = new ArrayList<DirectoryItem>();
+//        for (int i = 0; i < bookInfo.getBookmarkCount(); i++) {
+//            DirectoryItem bookmarkItem = new DirectoryItem(bookInfo.getBookmark(i).getPosText(), bookInfo.getBookmark(i).getBookmarkPage(), bookInfo.getBookmark(i));
+//            bookmarkItems.add(bookmarkItem);
+//        }
+
+        ArrayList<AnnotationItem> annotationItems = new ArrayList<AnnotationItem>();
+
+        final DialogDirectory.IGotoPageHandler gotoPageHandler = new DialogDirectory.IGotoPageHandler()
+        {
+
+            @Override
+            public void jumpTOC(DirectoryItem item)
+            {
+                TOCItem toc = (TOCItem) item.getTag();
+                ReaderView.this.goToPage(toc.getPage() + 1);
+            }
+
+            @Override
+            public void jumpBookmark(DirectoryItem item)
+            {
+                ReaderView.this.goToBookmark((Bookmark) item.getTag());
+            }
+
+            @Override
+            public void jumpAnnotation(DirectoryItem item)
+            {
+                // TODO Auto-generated method stub
+
+            }
+        };
+        DialogDirectory dialog = new DialogDirectory(mActivity, tocItems, bookmarkItems, annotationItems, gotoPageHandler, tab);
+        dialog.show();
+    }
 }
