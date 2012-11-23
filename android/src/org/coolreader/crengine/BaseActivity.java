@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Locale;
 
 import org.coolreader.R;
+import org.coolreader.crengine.Settings.DictInfo;
 import org.coolreader.db.CRDBService;
 import org.coolreader.db.CRDBServiceAccessor;
 import org.coolreader.sync.SyncServiceAccessor;
@@ -659,7 +660,7 @@ public class BaseActivity extends Activity implements Settings {
 		//BackgroundThread.instance().postGUI(task, 10);
     }
     
-    public void updateBacklightBrightness(float b) {
+    private void updateBacklightBrightness(float b) {
         Window wnd = getWindow();
         if (wnd != null) {
 	    	LayoutParams attrs =  wnd.getAttributes();

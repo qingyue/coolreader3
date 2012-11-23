@@ -1,7 +1,6 @@
 package org.coolreader.crengine;
 
 
-
 public class Bookmark {
 
 	public Bookmark()
@@ -211,15 +210,6 @@ public class Bookmark {
 		return true;
 	}
 
-	public int getBookmarkPage()
-	{
-	    return bookmarkPage;
-	}
-	public void setbookmarkPage(int page)
-	{
-	    bookmarkPage = page;
-	}
-
 	public static final int TYPE_LAST_POSITION = 0;
 	public static final int TYPE_POSITION = 1;
 	public static final int TYPE_COMMENT = 2;
@@ -234,10 +224,9 @@ public class Bookmark {
 	private String posText;
 	private String commentText;
 	private long timeStamp = System.currentTimeMillis(); // UTC timestamp
-	private int bookmarkPage;
-
 	@Override
 	public String toString() {
 		return "Bookmark[t=" + type + ", start=" + startPos + "]";
 	}
+	
 }

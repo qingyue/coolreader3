@@ -239,7 +239,6 @@ public class BaseDialog extends Dialog {
         }
         contentsLayout =  (ViewGroup)layout.findViewById(R.id.base_dialog_content_view);
         contentsLayout.addView(view);
-        view.setFocusable(true);
         setTitle(title);
 		return layout;
 	}

@@ -20,7 +20,6 @@ public class DeviceInfo {
 	public final static boolean FORCE_LIGHT_THEME;
 	public final static boolean EINK_SONY;
 	public final static boolean SONY_NAVIGATION_KEYS;
-	public final static boolean EINK_BOOX;
 	public final static boolean USE_CUSTOM_TOAST;
 	public final static boolean AMOLED_SCREEN;
 	public final static boolean POCKETBOOK;
@@ -94,10 +93,8 @@ public class DeviceInfo {
         		(MODEL.toLowerCase().startsWith("gt-i")); // AMOLED screens: GT-IXXXX
 		EINK_NOOK = MANUFACTURER.toLowerCase().contentEquals("barnesandnoble") && MODEL.contentEquals("NOOK") &&
 				DEVICE.toLowerCase().contentEquals("zoom2");
-		
-		EINK_BOOX = true;
 		EINK_SONY = MANUFACTURER.toLowerCase().contentEquals("sony") && MODEL.startsWith("PRS-T");
-		EINK_SCREEN = EINK_SONY || EINK_NOOK || EINK_BOOX; // TODO: set to true for eink devices like Nook Touch
+		EINK_SCREEN = EINK_SONY || EINK_NOOK; // TODO: set to true for eink devices like Nook Touch
 
 		POCKETBOOK = MODEL.toLowerCase().startsWith("pocketbook") || MODEL.toLowerCase().startsWith("obreey");
 		

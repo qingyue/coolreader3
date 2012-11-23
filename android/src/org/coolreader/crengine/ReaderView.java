@@ -3,7 +3,6 @@ package org.coolreader.crengine;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -14,14 +13,12 @@ import java.util.concurrent.Callable;
 
 import org.coolreader.CoolReader;
 import org.coolreader.R;
-import org.coolreader.crengine.CoverpageManager.ImageItem;
 import org.coolreader.crengine.Engine.HyphDict;
 import org.coolreader.crengine.InputDialog.InputHandler;
 import org.coolreader.sync.ChangeInfo;
 import org.coolreader.sync.SyncServiceAccessor;
 import org.koekak.android.ebookdownloader.SonyBookSelector;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -29,7 +26,6 @@ import android.graphics.Color;
 import android.graphics.ColorFilter;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.text.ClipboardManager;
 import android.util.Log;
@@ -40,34 +36,12 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.widget.LinearLayout;
-import android.widget.Toast;
-
-import com.onyx.android.sdk.data.cms.OnyxCmsCenter;
-import com.onyx.android.sdk.data.cms.OnyxMetadata;
-import com.onyx.android.sdk.data.util.FileUtil;
-import com.onyx.android.sdk.data.util.RefValue;
-import com.onyx.android.sdk.device.EpdController;
-import com.onyx.android.sdk.device.EpdController.UpdateMode;
-import com.onyx.android.sdk.ui.data.DirectoryItem;
-import com.onyx.android.sdk.ui.dialog.AnnotationItem;
-import com.onyx.android.sdk.ui.dialog.DialogDirectory;
-import com.onyx.android.sdk.ui.dialog.DialogDirectory.DirectoryTab;
-import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings;
-import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings.onSettingsFontFaceListener;
-import com.onyx.android.sdk.ui.dialog.DialogGotoPage;
-import com.onyx.android.sdk.ui.dialog.DialogGotoPage.AcceptNumberListener;
-import com.onyx.android.sdk.ui.dialog.DialogLoading;
-import com.onyx.android.sdk.ui.dialog.DialogReaderMenu;
-import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.FontSizeProperty;
-import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.LineSpacingProperty;
-import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.RotationScreenProperty;
-import com.onyx.android.sdk.ui.dialog.DialogScreenRefresh;
 
 public class ReaderView extends SurfaceView implements android.view.SurfaceHolder.Callback, Settings {
-    private static final String TAG = "ReaderView";
+
 	public static final Logger log = L.create("rv", Log.VERBOSE);
 	public static final Logger alog = L.create("ra", Log.WARN);
+
 	private DocView doc;
 	
     // additional key codes for Nook
@@ -203,10 +177,6 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
     	DCMD_SWITCH_PROFILE(2030),
     	DCMD_TOGGLE_TEXT_AUTOFORMAT(2031),
 
-    	//qingyue add
-    	DCMD_INTERLINE_SPACE_INCREASE(302),
-    	DCMD_INTERLINE_SPACE_DECREASE(303),
-
     	DCMD_FONT_NEXT(2032),
 		DCMD_FONT_PREVIOUS(2033),
 
@@ -317,10 +287,6 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
     private BookInfo mBookInfo;
     
     private Properties mSettings = new Properties();
-    
-    private DialogReaderMenu mDialogReaderMenu = null;
-    
-    private int mPageRenderCount = 0;
 
     public Engine getEngine()
     {
@@ -549,12 +515,8 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 		trackedKeyEvent = null;
 		actionToRepeat = null;
 		repeatActionActive = false;
-//		if (currentTapHandler != null)
-//			currentTapHandler.cancel();
-
-		if (mCurrentOnyxTapHandler != null) {
-		    mCurrentOnyxTapHandler.cancel();
-		}
+		if (currentTapHandler != null)
+			currentTapHandler.cancel();
 	}
 
 	private boolean isTracked( KeyEvent event ) {
@@ -621,12 +583,8 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			keyDownTimestampMap.put(keyCode, System.currentTimeMillis());
 			
 			if (keyCode == KeyEvent.KEYCODE_BACK) {
-			    if (mActivity.isBookOpened()) {
-			        mActivity.finish();
-			        return true;
-			    }
-			    // force saving position on BACK key press
-			    scheduleSaveCurrentPositionBookmark(1);
+				// force saving position on BACK key press
+				scheduleSaveCurrentPositionBookmark(1);
 			}
 		}
 		if ( keyCode==KeyEvent.KEYCODE_POWER || keyCode==KeyEvent.KEYCODE_ENDCALL ) {
@@ -717,8 +675,6 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			repeatActionActive = true;
 			onAction(actionToRepeat, new Runnable() {
 				public void run() {
-				    L.d("action is compeleted");
-				    ReaderView.this.epdInvalidateHelper();
 					if ( trackedKeyEvent==event ) {
 						log.v("action is completed : " + actionToRepeat );
 						repeatActionActive = false;
@@ -853,11 +809,9 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	public void copyToClipboard( String text ) {
 		if ( text!=null && text.length()>0 ) {
 			ClipboardManager cm = mActivity.getClipboardmanager();
-			if(cm != null) {
-			    cm.setText(text);
-			    log.i("Setting clipboard text: " + text);
-			    mActivity.showToast("Selection text copied to clipboard");
-			}
+			cm.setText(text);
+			log.i("Setting clipboard text: " + text);
+			mActivity.showToast("Selection text copied to clipboard");
 		}
 	}
 	
@@ -909,15 +863,13 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 		
 		private void lockOrientation() {
 			oldOrientation = mActivity.getScreenOrientation();
-			if (oldOrientation == 4) {
-			    mActivity.setScreenOrientation(mActivity.getOrientationFromSensor());
-			}
+			if (oldOrientation == 4)
+				mActivity.setScreenOrientation(mActivity.getOrientationFromSensor());
 		}
 
 		private void unlockOrientation() {
-			if (oldOrientation == 4) {
-			    mActivity.setScreenOrientation(oldOrientation);
-			}
+			if (oldOrientation == 4)
+				mActivity.setScreenOrientation(oldOrientation);
 		}
 
 		private void centerIfLessThanScreen(ImageInfo image) {
@@ -1163,347 +1115,346 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			currentImageViewer.close();
 	}
 
-//	private TapHandler currentTapHandler = null;
-//	public class TapHandler {
-//
-//	    private final static int STATE_INITIAL = 0; // no events yet
-//	    private final static int STATE_DOWN_1 = 1; // down first time
-//	    private final static int STATE_SELECTION = 3; // selection is started
-//	    private final static int STATE_FLIPPING = 4; // flipping is in progress
-//	    private final static int STATE_WAIT_FOR_DOUBLE_CLICK = 5; // flipping is in progress
-//	    private final static int STATE_DONE = 6; // done: no more tracking
-//	    private final static int STATE_BRIGHTNESS = 7; // brightness change in progress
-//
-//	    private final static int EXPIRATION_TIME_MS = 180000;
-//
-//	    int state = STATE_INITIAL;
-//
-//	    int start_x = 0;
-//	    int start_y = 0;
-//	    int width = 0;
-//	    int height = 0;
-//	    ReaderAction shortTapAction = ReaderAction.NONE;
-//	    ReaderAction longTapAction = ReaderAction.NONE;
-//	    ReaderAction doubleTapAction = ReaderAction.NONE;
-//	    long firstDown;
-//
+	private TapHandler currentTapHandler = null;
+	public class TapHandler {
 
-//	    /// handle unexpected event for state: stop tracking
-//	    private boolean unexpectedEvent() {
-//	        cancel();
-//	        return true; // ignore
-//	    }
-//
-//	    public boolean isInitialState() {
-//	        return state == STATE_INITIAL;
-//	    }
-//	    public void checkExpiration() {
-//	        if (state != STATE_INITIAL && Utils.timeInterval(firstDown) > EXPIRATION_TIME_MS)
-//	            cancel();
-//	    }
-//
-//	    /// cancel current action and reset touch tracking state
-//	    private boolean cancel() {
-//	        if (state == STATE_INITIAL)
-//	            return true;
-//	        switch (state) {
-//	        case STATE_DOWN_1:
-//	        case STATE_SELECTION:
-//	            clearSelection();
-//	            break;
-//	        case STATE_FLIPPING:
-//	            stopAnimation(-1, -1);
-//	            break;
-//	        case STATE_WAIT_FOR_DOUBLE_CLICK:
-//	        case STATE_DONE:
-//	        case STATE_BRIGHTNESS:
-//	            stopBrightnessControl(-1, -1);
-//	            break;
-//	        }
-//	        state = STATE_DONE;
-//	        unhiliteTapZone(); 
-//	        currentTapHandler = new TapHandler();
-//	        return true;
-//	    }
-//
-//	    /// perform action and reset touch tracking state
-//	    private boolean performAction(final ReaderAction action, boolean checkForLinks) {
-//	        log.d("performAction on touch: " + action);
-//	        state = STATE_DONE;
-//
-//	        currentTapHandler = new TapHandler();
-//
-//	        if (!checkForLinks) {
-//	            onAction(action);
-//	            return true;
-//	        }
-//
-//	        // check link before executing action
-//	        mEngine.execute(new Task() {
-//	            String link;
-//	            ImageInfo image;
-//	            Bookmark bookmark;
-//	            public void work() {
-//	                image = new ImageInfo();
-//	                image.bufWidth = internalDX;
-//	                image.bufHeight = internalDY;
-//	                image.bufDpi = mActivity.getDensityDpi();
-//	                if (doc.checkImage(start_x, start_y, image)) {
-//	                    return;
-//	                }
-//	                image = null;
-//	                link = doc.checkLink(start_x, start_y, mActivity.getPalmTipPixels() / 2 );
-//	                if ( link!=null ) {
-//	                    if ( link.startsWith("#") ) {
-//	                        log.d("go to " + link);
-//	                        doc.goLink(link);
-//	                        drawPage();
-//	                    }
-//	                    return;
-//	                } 
-//	                bookmark = doc.checkBookmark(start_x, start_y);
-//	                if (bookmark != null && bookmark.getType() == Bookmark.TYPE_POSITION)
-//	                    bookmark = null;
-//	            }
-//	            public void done() {
-//	                if (bookmark != null)
-//	                    bookmark = mBookInfo.findBookmark(bookmark);
-//	                if (link == null && image == null && bookmark == null) {
-//	                    onAction(action);
-//	                } else if (image != null) {
-//	                    startImageViewer(image);
-//	                } else if (bookmark != null) {
-//	                    BookmarkEditDialog dlg = new BookmarkEditDialog(mActivity, ReaderView.this, bookmark, false);
-//	                    dlg.show();
-//	                } else if (!link.startsWith("#")) {
-//	                    log.d("external link " + link);
-//	                    if (link.startsWith("http://")||link.startsWith("https://")) {
-//	                        mActivity.openURL(link);
-//	                    } else {
-//	                        // absolute path to file
-//	                        FileInfo fi = new FileInfo(link);
-//	                        if (fi.exists()) {
-//	                            mActivity.loadDocument(fi);
-//	                            return;
-//	                        }
-//	                        File baseDir = null;
-//	                        if (mBookInfo!=null && mBookInfo.getFileInfo()!=null) {
-//	                            if (!mBookInfo.getFileInfo().isArchive) {
-//	                                // relatively to base directory
-//	                                File f = new File(mBookInfo.getFileInfo().getBasePath());
-//	                                baseDir = f.getParentFile();
-//	                                String url = link;
-//	                                while (baseDir!=null && url!=null && url.startsWith("../")) {
-//	                                    baseDir = baseDir.getParentFile();
-//	                                    url = url.substring(3);
-//	                                }
-//	                                if (baseDir!=null && url!=null && url.length()>0) {
-//	                                    fi = new FileInfo(baseDir.getAbsolutePath()+"/"+url);
-//	                                    if (fi.exists()) {
-//	                                        mActivity.loadDocument(fi);
-//	                                        return;
-//	                                    }
-//	                                }
-//	                            } else {
-//	                                // from archive
-//	                                fi = new FileInfo(mBookInfo.getFileInfo().getArchiveName() + FileInfo.ARC_SEPARATOR + link);
-//	                                if (fi.exists()) {
-//	                                    mActivity.loadDocument(fi);
-//	                                    return;
-//	                                }
-//	                            }
-//	                        }
-//	                        mActivity.showToast("Cannot open link " + link);
-//	                    }
-//	                }
-//	            }
-//	        });
-//	        return true;
-//	    }
-//
-//	    private boolean startSelection() {
-//	        state = STATE_SELECTION;
-//	        // check link before executing action
-//	        mEngine.execute(new Task() {
-//	            ImageInfo image;
-//	            Bookmark bookmark;
-//	            public void work() {
-//	                image = new ImageInfo();
-//	                image.bufWidth = internalDX;
-//	                image.bufHeight = internalDY;
-//	                image.bufDpi = mActivity.getDensityDpi();
-//	                if (!doc.checkImage(start_x, start_y, image))
-//	                    image = null;
-//	                bookmark = doc.checkBookmark(start_x, start_y);
-//	                if (bookmark != null && bookmark.getType() == Bookmark.TYPE_POSITION)
-//	                    bookmark = null;
-//	            }
-//	            public void done() {
-//	                if (bookmark != null)
-//	                    bookmark = mBookInfo.findBookmark(bookmark);
-//	                if (image != null) {
-//	                    cancel();
-//	                    startImageViewer(image);
-//	                } else if (bookmark != null) {
-//	                    cancel();
-//	                    BookmarkEditDialog dlg = new BookmarkEditDialog(mActivity, ReaderView.this, bookmark, false);
-//	                    dlg.show();
-//	                } else {
-//	                    updateSelection( start_x, start_y, start_x, start_y, false );
-//	                }
-//	            }
-//	        });
-//	        return true;
-//	    }
-//
-//	    private boolean trackDoubleTap() {
-//	        state = STATE_WAIT_FOR_DOUBLE_CLICK;
-//	        BackgroundThread.instance().postGUI(new Runnable() {
-//	            @Override
-//	            public void run() {
-//	                if (currentTapHandler == TapHandler.this && state == STATE_WAIT_FOR_DOUBLE_CLICK)
-//	                    performAction(shortTapAction, false);
-//	            }
-//	        }, DOUBLE_CLICK_INTERVAL);
-//	        return true;
-//	    }
-//
-//	    private boolean trackLongTap() {
-//	        BackgroundThread.instance().postGUI(new Runnable() {
-//	            @Override
-//	            public void run() {
-//	                if (currentTapHandler == TapHandler.this && state == STATE_DOWN_1) {
-//	                    if (longTapAction == ReaderAction.START_SELECTION)
-//	                        startSelection();
-//	                    else
-//	                        performAction(longTapAction, true);
-//	                }
-//	            }
-//	        }, LONG_KEYPRESS_TIME);
-//	        return true;
-//	    }
-//
-//	    public boolean onTouchEvent(MotionEvent event) {
-//	        int x = (int)event.getX();
-//	        int y = (int)event.getY();
-//
-//
-//	        if (state == STATE_INITIAL && event.getAction() != MotionEvent.ACTION_DOWN)
-//	            return unexpectedEvent(); // ignore unexpected event
-//
-//	        if (event.getAction() == MotionEvent.ACTION_UP) {
-//	            long duration = Utils.timeInterval(firstDown);
-//	            switch (state) {
-//	            case STATE_DOWN_1:
-//	                if ( hiliteTapZoneOnTap ) {
-//	                    hiliteTapZone( true, x, y, width, height );
-//	                    scheduleUnhilite( LONG_KEYPRESS_TIME );
-//	                }
-//	                if (duration > LONG_KEYPRESS_TIME) {
-//	                    if (longTapAction == ReaderAction.START_SELECTION)
-//	                        return startSelection();
-//	                    return performAction(longTapAction, true);
-//	                }
-//	                if (doubleTapAction.isNone())
-//	                    return performAction(shortTapAction, false);
-//	                // start possible double tap tracking
-//	                return trackDoubleTap();
-//	            case STATE_FLIPPING:
-//	                stopAnimation(x, y);
-//	                state = STATE_DONE;
-//	                return cancel();
-//	            case STATE_BRIGHTNESS:
-//	                stopBrightnessControl(x, y);
-//	                state = STATE_DONE;
-//	                return cancel();
-//	            case STATE_SELECTION:
-//	                updateSelection( start_x, start_y, x, y, true );
-//	                selectionModeActive = false;
-//	                state = STATE_DONE;
-//	                return cancel();
-//	            }
-//	        } else if (event.getAction() == MotionEvent.ACTION_DOWN) {
-//	            switch (state) {
-//	            case STATE_INITIAL:
-//	                start_x = x;
-//	                start_y = y;
-//	                width = getWidth();
-//	                height = getHeight();
-//	                int zone = getTapZone(x, y, width, height);
-//	                shortTapAction = findTapZoneAction(zone, TAP_ACTION_TYPE_SHORT);
-//	                longTapAction = findTapZoneAction(zone, TAP_ACTION_TYPE_LONGPRESS);
-//	                doubleTapAction = findTapZoneAction(zone, TAP_ACTION_TYPE_DOUBLE);
-//	                firstDown = Utils.timeStamp();
-//	                if (selectionModeActive) {
-//	                    startSelection();
-//	                } else {
-//	                    state = STATE_DOWN_1;
-//	                    trackLongTap();
-//	                }
-//	                return true;
-//	            case STATE_DOWN_1:
-//	            case STATE_BRIGHTNESS:
-//	            case STATE_FLIPPING:
-//	            case STATE_SELECTION:
-//	                return unexpectedEvent();
-//	            case STATE_WAIT_FOR_DOUBLE_CLICK:
-//	                if (doubleTapAction == ReaderAction.START_SELECTION)
-//	                    return startSelection();
-//	                return performAction(doubleTapAction, true);
-//	            }
-//	        } else if (event.getAction() == MotionEvent.ACTION_MOVE) {
-//	            int dx = x - start_x;
-//	            int dy = y - start_y;
-//	            int adx = dx > 0 ? dx : -dx;
-//	            int ady = dy > 0 ? dy : -dy;
-//	            int distance = adx + ady;
-//	            int dragThreshold = mActivity.getPalmTipPixels();
-//	            switch (state) {
-//	            case STATE_DOWN_1:
-//	                if (distance < dragThreshold)
-//	                    return true;
-//	                if (!DeviceInfo.EINK_SCREEN && isBacklightControlFlick != BACKLIGHT_CONTROL_FLICK_NONE && ady > adx) {
-//	                    // backlight control enabled
-//	                    if (start_x < dragThreshold * 170 / 100 && isBacklightControlFlick == 1
-//	                            || start_x > width - dragThreshold * 170 / 100 && isBacklightControlFlick == 2) {
-//	                        // brightness
-//	                        state = STATE_BRIGHTNESS;
-//	                        startBrightnessControl(start_x, start_y);
-//	                        return true;
-//	                    }
-//	                }
-//	                boolean isPageMode = mSettings.getInt(PROP_PAGE_VIEW_MODE, 1) == 1;
-//	                int dir = isPageMode ? x - start_x : y - start_y;
-//	                if (gesturePageFlippingEnabled) {
-//	                    if (pageFlipAnimationSpeedMs == 0 || DeviceInfo.EINK_SCREEN) {
-//	                        // no animation
-//	                        return performAction(dir < 0 ? ReaderAction.PAGE_DOWN : ReaderAction.PAGE_UP, false);
-//	                    }
-//	                    startAnimation(start_x, start_y, width, height, x, y);
-//	                    updateAnimation(x, y);
-//	                    state = STATE_FLIPPING;
-//	                }
-//	                return true;
-//	            case STATE_FLIPPING:
-//	                updateAnimation(x, y);
-//	                return true;
-//	            case STATE_BRIGHTNESS:
-//	                updateBrightnessControl(x, y);
-//	                return true;
-//	            case STATE_WAIT_FOR_DOUBLE_CLICK:
-//	                return true;
-//	            case STATE_SELECTION:
-//	                updateSelection( start_x, start_y, x, y, false );
-//	                break;
-//	            }
-//
-//	        } else if (event.getAction() == MotionEvent.ACTION_OUTSIDE) {
-//	            return unexpectedEvent();
-//	        }
-//	        return true;
-//	    }
-//	}
+		private final static int STATE_INITIAL = 0; // no events yet
+		private final static int STATE_DOWN_1 = 1; // down first time
+		private final static int STATE_SELECTION = 3; // selection is started
+		private final static int STATE_FLIPPING = 4; // flipping is in progress
+		private final static int STATE_WAIT_FOR_DOUBLE_CLICK = 5; // flipping is in progress
+		private final static int STATE_DONE = 6; // done: no more tracking
+		private final static int STATE_BRIGHTNESS = 7; // brightness change in progress
+		
+		private final static int EXPIRATION_TIME_MS = 180000;
+		
+		int state = STATE_INITIAL;
+		
+		int start_x = 0;
+		int start_y = 0;
+		int width = 0;
+		int height = 0;
+		ReaderAction shortTapAction = ReaderAction.NONE;
+		ReaderAction longTapAction = ReaderAction.NONE;
+		ReaderAction doubleTapAction = ReaderAction.NONE;
+		long firstDown;
+		
+		/// handle unexpected event for state: stop tracking
+		private boolean unexpectedEvent() {
+			cancel();
+			return true; // ignore
+		}
+		
+		public boolean isInitialState() {
+			return state == STATE_INITIAL;
+		}
+		public void checkExpiration() {
+			if (state != STATE_INITIAL && Utils.timeInterval(firstDown) > EXPIRATION_TIME_MS)
+				cancel();
+		}
+		
+		/// cancel current action and reset touch tracking state
+		private boolean cancel() {
+			if (state == STATE_INITIAL)
+				return true;
+			switch (state) {
+			case STATE_DOWN_1:
+			case STATE_SELECTION:
+				clearSelection();
+				break;
+			case STATE_FLIPPING:
+				stopAnimation(-1, -1);
+				break;
+			case STATE_WAIT_FOR_DOUBLE_CLICK:
+			case STATE_DONE:
+			case STATE_BRIGHTNESS:
+				stopBrightnessControl(-1, -1);
+				break;
+			}
+			state = STATE_DONE;
+			unhiliteTapZone(); 
+			currentTapHandler = new TapHandler();
+			return true;
+		}
 
+		/// perform action and reset touch tracking state
+		private boolean performAction(final ReaderAction action, boolean checkForLinks) {
+			log.d("performAction on touch: " + action);
+			state = STATE_DONE;
+
+			currentTapHandler = new TapHandler();
+
+			if (!checkForLinks) {
+				onAction(action);
+				return true;
+			}
+			
+			// check link before executing action
+			mEngine.execute(new Task() {
+				String link;
+				ImageInfo image;
+				Bookmark bookmark;
+				public void work() {
+					image = new ImageInfo();
+					image.bufWidth = internalDX;
+					image.bufHeight = internalDY;
+					image.bufDpi = mActivity.getDensityDpi();
+					if (doc.checkImage(start_x, start_y, image)) {
+						return;
+					}
+					image = null;
+					link = doc.checkLink(start_x, start_y, mActivity.getPalmTipPixels() / 2 );
+					if ( link!=null ) {
+						if ( link.startsWith("#") ) {
+							log.d("go to " + link);
+							doc.goLink(link);
+							drawPage();
+						}
+						return;
+					} 
+					bookmark = doc.checkBookmark(start_x, start_y);
+					if (bookmark != null && bookmark.getType() == Bookmark.TYPE_POSITION)
+						bookmark = null;
+				}
+				public void done() {
+					if (bookmark != null)
+						bookmark = mBookInfo.findBookmark(bookmark);
+					if (link == null && image == null && bookmark == null) {
+						onAction(action);
+					} else if (image != null) {
+						startImageViewer(image);
+					} else if (bookmark != null) {
+						BookmarkEditDialog dlg = new BookmarkEditDialog(mActivity, ReaderView.this, bookmark, false);
+						dlg.show();
+					} else if (!link.startsWith("#")) {
+						log.d("external link " + link);
+						if (link.startsWith("http://")||link.startsWith("https://")) {
+							mActivity.openURL(link);
+						} else {
+							// absolute path to file
+							FileInfo fi = new FileInfo(link);
+							if (fi.exists()) {
+								mActivity.loadDocument(fi);
+								return;
+							}
+							File baseDir = null;
+							if (mBookInfo!=null && mBookInfo.getFileInfo()!=null) {
+								if (!mBookInfo.getFileInfo().isArchive) {
+									// relatively to base directory
+									File f = new File(mBookInfo.getFileInfo().getBasePath());
+									baseDir = f.getParentFile();
+									String url = link;
+									while (baseDir!=null && url!=null && url.startsWith("../")) {
+										baseDir = baseDir.getParentFile();
+										url = url.substring(3);
+									}
+									if (baseDir!=null && url!=null && url.length()>0) {
+										fi = new FileInfo(baseDir.getAbsolutePath()+"/"+url);
+										if (fi.exists()) {
+											mActivity.loadDocument(fi);
+											return;
+										}
+									}
+								} else {
+									// from archive
+									fi = new FileInfo(mBookInfo.getFileInfo().getArchiveName() + FileInfo.ARC_SEPARATOR + link);
+									if (fi.exists()) {
+										mActivity.loadDocument(fi);
+										return;
+									}
+								}
+							}
+							mActivity.showToast("Cannot open link " + link);
+						}
+					}
+				}
+			});
+			return true;
+		}
+		
+		private boolean startSelection() {
+			state = STATE_SELECTION;
+			// check link before executing action
+			mEngine.execute(new Task() {
+				ImageInfo image;
+				Bookmark bookmark;
+				public void work() {
+					image = new ImageInfo();
+					image.bufWidth = internalDX;
+					image.bufHeight = internalDY;
+					image.bufDpi = mActivity.getDensityDpi();
+					if (!doc.checkImage(start_x, start_y, image))
+						image = null;
+					bookmark = doc.checkBookmark(start_x, start_y);
+					if (bookmark != null && bookmark.getType() == Bookmark.TYPE_POSITION)
+						bookmark = null;
+				}
+				public void done() {
+					if (bookmark != null)
+						bookmark = mBookInfo.findBookmark(bookmark);
+					if (image != null) {
+						cancel();
+						startImageViewer(image);
+					} else if (bookmark != null) {
+						cancel();
+						BookmarkEditDialog dlg = new BookmarkEditDialog(mActivity, ReaderView.this, bookmark, false);
+						dlg.show();
+					} else {
+						updateSelection( start_x, start_y, start_x, start_y, false );
+					}
+				}
+			});
+			return true;
+		}
+		
+		private boolean trackDoubleTap() {
+			state = STATE_WAIT_FOR_DOUBLE_CLICK;
+			BackgroundThread.instance().postGUI(new Runnable() {
+				@Override
+				public void run() {
+					if (currentTapHandler == TapHandler.this && state == STATE_WAIT_FOR_DOUBLE_CLICK)
+						performAction(shortTapAction, false);
+				}
+			}, DOUBLE_CLICK_INTERVAL);
+			return true;
+		}
+		
+		private boolean trackLongTap() {
+			BackgroundThread.instance().postGUI(new Runnable() {
+				@Override
+				public void run() {
+					if (currentTapHandler == TapHandler.this && state == STATE_DOWN_1) {
+						if (longTapAction == ReaderAction.START_SELECTION)
+							startSelection();
+						else
+							performAction(longTapAction, true);
+					}
+				}
+			}, LONG_KEYPRESS_TIME);
+			return true;
+		}
+		
+		public boolean onTouchEvent(MotionEvent event) {
+			int x = (int)event.getX();
+			int y = (int)event.getY();
+			
+
+			if (state == STATE_INITIAL && event.getAction() != MotionEvent.ACTION_DOWN)
+				return unexpectedEvent(); // ignore unexpected event
+			
+			if (event.getAction() == MotionEvent.ACTION_UP) {
+				long duration = Utils.timeInterval(firstDown);
+				switch (state) {
+				case STATE_DOWN_1:
+					if ( hiliteTapZoneOnTap ) {
+						hiliteTapZone( true, x, y, width, height );
+						scheduleUnhilite( LONG_KEYPRESS_TIME );
+					}
+					if (duration > LONG_KEYPRESS_TIME) {
+						if (longTapAction == ReaderAction.START_SELECTION)
+							return startSelection();
+						return performAction(longTapAction, true);
+					}
+					if (doubleTapAction.isNone())
+						return performAction(shortTapAction, false);
+					// start possible double tap tracking
+					return trackDoubleTap();
+				case STATE_FLIPPING:
+					stopAnimation(x, y);
+					state = STATE_DONE;
+					return cancel();
+				case STATE_BRIGHTNESS:
+					stopBrightnessControl(x, y);
+					state = STATE_DONE;
+					return cancel();
+				case STATE_SELECTION:
+					updateSelection( start_x, start_y, x, y, true );
+					selectionModeActive = false;
+					state = STATE_DONE;
+					return cancel();
+				}
+			} else if (event.getAction() == MotionEvent.ACTION_DOWN) {
+				switch (state) {
+				case STATE_INITIAL:
+					start_x = x;
+					start_y = y;
+					width = getWidth();
+					height = getHeight();
+					int zone = getTapZone(x, y, width, height);
+					shortTapAction = findTapZoneAction(zone, TAP_ACTION_TYPE_SHORT);
+					longTapAction = findTapZoneAction(zone, TAP_ACTION_TYPE_LONGPRESS);
+					doubleTapAction = findTapZoneAction(zone, TAP_ACTION_TYPE_DOUBLE);
+					firstDown = Utils.timeStamp();
+					if (selectionModeActive) {
+						startSelection();
+					} else {
+						state = STATE_DOWN_1;
+						trackLongTap();
+					}
+					return true;
+				case STATE_DOWN_1:
+				case STATE_BRIGHTNESS:
+				case STATE_FLIPPING:
+				case STATE_SELECTION:
+					return unexpectedEvent();
+				case STATE_WAIT_FOR_DOUBLE_CLICK:
+					if (doubleTapAction == ReaderAction.START_SELECTION)
+						return startSelection();
+					return performAction(doubleTapAction, true);
+				}
+			} else if (event.getAction() == MotionEvent.ACTION_MOVE) {
+				int dx = x - start_x;
+				int dy = y - start_y;
+				int adx = dx > 0 ? dx : -dx;
+				int ady = dy > 0 ? dy : -dy;
+				int distance = adx + ady;
+				int dragThreshold = mActivity.getPalmTipPixels();
+				switch (state) {
+				case STATE_DOWN_1:
+					if (distance < dragThreshold)
+						return true;
+					if (!DeviceInfo.EINK_SCREEN && isBacklightControlFlick != BACKLIGHT_CONTROL_FLICK_NONE && ady > adx) {
+						// backlight control enabled
+						if (start_x < dragThreshold * 170 / 100 && isBacklightControlFlick == 1
+								|| start_x > width - dragThreshold * 170 / 100 && isBacklightControlFlick == 2) {
+							// brightness
+							state = STATE_BRIGHTNESS;
+							startBrightnessControl(start_x, start_y);
+							return true;
+						}
+					}
+					boolean isPageMode = mSettings.getInt(PROP_PAGE_VIEW_MODE, 1) == 1;
+					int dir = isPageMode ? x - start_x : y - start_y;
+					if (gesturePageFlippingEnabled) {
+						if (pageFlipAnimationSpeedMs == 0 || DeviceInfo.EINK_SCREEN) {
+							// no animation
+							return performAction(dir < 0 ? ReaderAction.PAGE_DOWN : ReaderAction.PAGE_UP, false);
+						}
+						startAnimation(start_x, start_y, width, height, x, y);
+						updateAnimation(x, y);
+						state = STATE_FLIPPING;
+					}
+					return true;
+				case STATE_FLIPPING:
+					updateAnimation(x, y);
+					return true;
+				case STATE_BRIGHTNESS:
+					updateBrightnessControl(x, y);
+					return true;
+				case STATE_WAIT_FOR_DOUBLE_CLICK:
+					return true;
+				case STATE_SELECTION:
+					updateSelection( start_x, start_y, x, y, false );
+					break;
+				}
+				
+			} else if (event.getAction() == MotionEvent.ACTION_OUTSIDE) {
+				return unexpectedEvent();
+			}
+			return true;
+		}
+	}
+	
 	@Override
 	public boolean onTouchEvent(MotionEvent event) {
 		
@@ -1532,303 +1483,11 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			}
 			return true;
 		}
-
-		if (mCurrentOnyxTapHandler == null)
-			mCurrentOnyxTapHandler = new OnyxTapHandler();
-		mCurrentOnyxTapHandler.checkExpiration();
-		return mCurrentOnyxTapHandler.onTouchEvent(event);
-	}
-
-	private OnyxTapHandler mCurrentOnyxTapHandler = null;
-	public class OnyxTapHandler {
-
-	    private final static int STATE_INITIAL = 0; // no events yet
-	    private final static int STATE_DOWN_1 = 1; // down first time
-	    private final static int STATE_SELECTION = 3; // selection is started
-	    private final static int STATE_FLIPPING = 4; // flipping is in progress
-	    private final static int STATE_WAIT_FOR_DOUBLE_CLICK = 5; // flipping is in progress
-	    private final static int STATE_DONE = 6; // done: no more tracking
-	    private final static int STATE_BRIGHTNESS = 7; // brightness change in progress
-
-	    private final static int EXPIRATION_TIME_MS = 180000;
-
-	    int state = STATE_INITIAL;
-
-	    int start_x = 0;
-	    int start_y = 0;
-	    int width = 0;
-	    int height = 0;
-	    ReaderAction shortTapAction = ReaderAction.NONE;
-	    ReaderAction longTapAction = ReaderAction.NONE;
-	    ReaderAction doubleTapAction = ReaderAction.NONE;
-	    long firstDown;
-
-	    /// handle unexpected event for state: stop tracking
-	    private boolean unexpectedEvent() {
-	        cancel();
-	        return true; // ignore
-	    }
-
-	    public boolean isInitialState() {
-	        return state == STATE_INITIAL;
-	    }
-	    public void checkExpiration() {
-	        if (state != STATE_INITIAL && Utils.timeInterval(firstDown) > EXPIRATION_TIME_MS)
-	            cancel();
-	    }
-
-	    /// cancel current action and reset touch tracking state
-	    private boolean cancel() {
-	        if (state == STATE_INITIAL)
-	            return true;
-	        switch (state) {
-	        case STATE_DOWN_1:
-	        case STATE_SELECTION:
-	            clearSelection();
-	            break;
-	        case STATE_FLIPPING:
-	            stopAnimation(-1, -1);
-	            break;
-	        case STATE_WAIT_FOR_DOUBLE_CLICK:
-	        case STATE_DONE:
-	        case STATE_BRIGHTNESS:
-	            stopBrightnessControl(-1, -1);
-	            break;
-	        }
-	        state = STATE_DONE;
-	        unhiliteTapZone();
-	        mCurrentOnyxTapHandler = new OnyxTapHandler();
-	        return true;
-	    }
-
-	    /// perform action and reset touch tracking state
-	    private boolean performAction(final ReaderAction action, boolean checkForLinks) {
-	        log.d("performAction on touch: " + action);
-	        state = STATE_DONE;
-
-	        mCurrentOnyxTapHandler = new OnyxTapHandler();
-
-	        if (!checkForLinks) {
-	            onAction(action);
-	            return true;
-	        }
-
-	        // check link before executing action
-	        mEngine.execute(new Task() {
-	            String link;
-	            ImageInfo image;
-	            Bookmark bookmark;
-	            public void work() {
-	                image = new ImageInfo();
-	                image.bufWidth = internalDX;
-	                image.bufHeight = internalDY;
-	                image.bufDpi = mActivity.getDensityDpi();
-	                if (doc.checkImage(start_x, start_y, image)) {
-	                    return;
-	                }
-	                image = null;
-	                link = doc.checkLink(start_x, start_y, mActivity.getPalmTipPixels() / 2 );
-	                if ( link!=null ) {
-	                    if ( link.startsWith("#") ) {
-	                        log.d("go to " + link);
-	                        doc.goLink(link);
-	                        drawPage();
-	                    }
-	                    return;
-	                }
-	                bookmark = doc.checkBookmark(start_x, start_y);
-	                if (bookmark != null && bookmark.getType() == Bookmark.TYPE_POSITION)
-	                    bookmark = null;
-	            }
-	            public void done() {
-	                if (bookmark != null)
-	                    bookmark = mBookInfo.findBookmark(bookmark);
-	                if (link == null && image == null && bookmark == null) {
-	                    onAction(action);
-	                } else if (image != null) {
-	                    startImageViewer(image);
-	                } else if (bookmark != null) {
-	                    BookmarkEditDialog dlg = new BookmarkEditDialog(mActivity, ReaderView.this, bookmark, false);
-	                    dlg.show();
-	                } else if (!link.startsWith("#")) {
-	                    log.d("external link " + link);
-	                    if (link.startsWith("http://")||link.startsWith("https://")) {
-	                        mActivity.openURL(link);
-	                    } else {
-	                        // absolute path to file
-	                        FileInfo fi = new FileInfo(link);
-	                        if (fi.exists()) {
-	                            mActivity.loadDocument(fi);
-	                            return;
-	                        }
-	                        File baseDir = null;
-	                        if (mBookInfo!=null && mBookInfo.getFileInfo()!=null) {
-	                            if (!mBookInfo.getFileInfo().isArchive) {
-	                                // relatively to base directory
-	                                File f = new File(mBookInfo.getFileInfo().getBasePath());
-	                                baseDir = f.getParentFile();
-	                                String url = link;
-	                                while (baseDir!=null && url!=null && url.startsWith("../")) {
-	                                    baseDir = baseDir.getParentFile();
-	                                    url = url.substring(3);
-	                                }
-	                                if (baseDir!=null && url!=null && url.length()>0) {
-	                                    fi = new FileInfo(baseDir.getAbsolutePath()+"/"+url);
-	                                    if (fi.exists()) {
-	                                        mActivity.loadDocument(fi);
-	                                        return;
-	                                    }
-	                                }
-	                            } else {
-	                                // from archive
-	                                fi = new FileInfo(mBookInfo.getFileInfo().getArchiveName() + FileInfo.ARC_SEPARATOR + link);
-	                                if (fi.exists()) {
-	                                    mActivity.loadDocument(fi);
-	                                    return;
-	                                }
-	                            }
-	                        }
-	                        mActivity.showToast("Cannot open link " + link);
-	                    }
-	                }
-	            }
-	        });
-	        return true;
-	    }
-
-	    private boolean startSelection() {
-	        state = STATE_SELECTION;
-	        // check link before executing action
-	        mEngine.execute(new Task() {
-	            ImageInfo image;
-	            Bookmark bookmark;
-	            public void work() {
-	                image = new ImageInfo();
-	                image.bufWidth = internalDX;
-	                image.bufHeight = internalDY;
-	                image.bufDpi = mActivity.getDensityDpi();
-	                if (!doc.checkImage(start_x, start_y, image))
-	                    image = null;
-	                bookmark = doc.checkBookmark(start_x, start_y);
-	                if (bookmark != null && bookmark.getType() == Bookmark.TYPE_POSITION)
-	                    bookmark = null;
-	            }
-	            public void done() {
-	                if (bookmark != null)
-	                    bookmark = mBookInfo.findBookmark(bookmark);
-	                if (image != null) {
-	                    cancel();
-	                    startImageViewer(image);
-	                } else if (bookmark != null) {
-	                    cancel();
-	                    BookmarkEditDialog dlg = new BookmarkEditDialog(mActivity, ReaderView.this, bookmark, false);
-	                    dlg.show();
-	                } else {
-	                    updateSelection( start_x, start_y, start_x, start_y, false );
-	                }
-	            }
-	        });
-	        return true;
-	    }
-
-	    private boolean trackDoubleTap() {
-	        state = STATE_WAIT_FOR_DOUBLE_CLICK;
-	        BackgroundThread.instance().postGUI(new Runnable() {
-	            @Override
-	            public void run() {
-	                if (mCurrentOnyxTapHandler == OnyxTapHandler.this && state == STATE_WAIT_FOR_DOUBLE_CLICK)
-	                    performAction(shortTapAction, false);
-	            }
-	        }, DOUBLE_CLICK_INTERVAL);
-	        return true;
-	    }
-
-	    private boolean trackLongTap() {
-	        BackgroundThread.instance().postGUI(new Runnable() {
-	            @Override
-	            public void run() {
-	                if (mCurrentOnyxTapHandler == OnyxTapHandler.this && state == STATE_DOWN_1) {
-	                    if (longTapAction == ReaderAction.START_SELECTION)
-	                        startSelection();
-	                    else
-	                        performAction(longTapAction, true);
-	                }
-	            }
-	        }, LONG_KEYPRESS_TIME);
-	        return true;
-	    }
-
-	    public boolean onTouchEvent(MotionEvent event) {
-	        int x = (int)event.getX();
-	        int y = (int)event.getY();
-
-	        if (state == STATE_INITIAL && event.getAction() != MotionEvent.ACTION_DOWN) {
-	            return unexpectedEvent(); // ignore unexpected event
-	        }
-
-	        if (event.getAction() == MotionEvent.ACTION_UP) {
-	            long duration = Utils.timeInterval(firstDown);
-	            if (duration > LONG_KEYPRESS_TIME) {
-	                startSelection();
-	                updateSelection( start_x, start_y, x, y, true );
-	                selectionModeActive = false;
-	                return true;
-	            }
-	            return performAction(shortTapAction, false);
-	        }
-	        else if (event.getAction() == MotionEvent.ACTION_DOWN) {
-	            start_x = x;
-	            start_y = y;
-	            width = getWidth();
-	            firstDown = Utils.timeStamp();
-
-	            if(x >= mBookmarkX && x < mBookmarkBitmap.getWidth() + mBookmarkX && y >= mBookmarkY && y < mBookmarkBitmap.getHeight()) {
-	                Bookmark bm = doc.getCurrentPageBookmark();
-	                for (int i = 0; i < mBookInfo.getBookmarkCount(); i++) {
-	                    if (mBookInfo.getBookmark(i).getPosText().equals(bm.getPosText())) {
-	                        removeBookmark(mBookInfo.getBookmark(i));
-	                        return true;
-	                    }
-	                }
-	                addBookmark(0);
-	                return true;
-	            }
-	            else if ((x * 3) <= width) {
-	                shortTapAction = ReaderAction.PAGE_UP;
-	            }
-	            else if (x <= ((width *2) / 3)) {
-	                shortTapAction = ReaderAction.READER_MENU;
-	            }
-	            else {
-	                shortTapAction = ReaderAction.PAGE_DOWN;
-	            }
-	            state = STATE_DOWN_1;
-
-	            return true;
-	        } else if (event.getAction() == MotionEvent.ACTION_MOVE) {
-	            int dx = x - start_x;
-	            int dy = y - start_y;
-	            int adx = dx > 0 ? dx : -dx;
-	            int ady = dy > 0 ? dy : -dy;
-	            int distance = adx + ady;
-	            int dragThreshold = mActivity.getPalmTipPixels();
-
-	            if (distance < dragThreshold) {
-	                return true;
-	            }
-
-	            boolean isPageMode = mSettings.getInt(PROP_PAGE_VIEW_MODE, 1) == 1;
-	            int dir = isPageMode ? x - start_x : y - start_y;
-	            if (pageFlipAnimationSpeedMs == 0 || DeviceInfo.EINK_SCREEN) {
-	                // no animation
-	                return performAction(dir < 0 ? ReaderAction.PAGE_DOWN : ReaderAction.PAGE_UP, false);
-	            }
-	        }
-	        else if (event.getAction() == MotionEvent.ACTION_OUTSIDE) {
-	            return unexpectedEvent();
-	        }
-	        return true;
-	    }
+		
+		if (currentTapHandler == null)
+			currentTapHandler = new TapHandler();
+		currentTapHandler.checkExpiration();
+		return currentTapHandler.onTouchEvent(event);
 	}
 
 	@Override
@@ -2038,26 +1697,17 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 				BackgroundThread.ensureBackground();
 				if ( mBookInfo!=null ) {
 					bm = doc.getCurrentPageBookmark();
-					bm.setbookmarkPage(doc.getPositionProps(null).pageNumber + 1);
 					bm.setShortcut(shortcut);
 				}
 			}
 			public void done() {
 				if ( mBookInfo!=null && bm!=null ) {
-
-				    for (int i = 0; i < mBookInfo.getBookmarkCount(); i++) {
-				        if (mBookInfo.getBookmark(i).getPosText().equals(bm.getPosText())) {
-                            return;
-                        }
-				    }
-
 					if ( shortcut==0 )
-					    mBookInfo.addBookmark(bm);
+						mBookInfo.addBookmark(bm);
 					else
 						mBookInfo.setShortcutBookmark(shortcut, bm);
 					getSyncService().saveBookmark(mBookInfo.getFileInfo().getPathName(), bm, false);
 					mActivity.getDB().saveBookInfo(mBookInfo);
-
 					String s;
 					if ( shortcut==0 )
 						s = mActivity.getString(R.string.toast_position_bookmark_is_set);
@@ -2138,15 +1788,10 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	
 	public void toggleFullscreen()
 	{
-	    boolean newBool = !mActivity.isFullscreen();
-	    String newValue = newBool ? "1" : "0";
-//		saveSetting(PROP_APP_FULLSCREEN, newValue);
-
-	    Properties settings = new Properties();
-	    settings.put(PROP_APP_FULLSCREEN, newValue);
-	    setSettings(settings, null, true, true);
-
-	    mActivity.setFullscreen(newBool);
+		boolean newBool = !mActivity.isFullscreen();
+		String newValue = newBool ? "1" : "0";
+		saveSetting(PROP_APP_FULLSCREEN, newValue);
+		mActivity.setFullscreen(newBool);
 	}
 	
 	public void showReadingPositionPopup()
@@ -2886,15 +2531,15 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
             drawPage();
 			break;
 		case DCMD_PAGEDOWN:
-//			if ( param==1 )
-//				animatePageFlip(1, onFinishHandler);
-//			else
+			if ( param==1 )
+				animatePageFlip(1, onFinishHandler);
+			else
 				doEngineCommand(cmd, param, onFinishHandler);
 			break;
 		case DCMD_PAGEUP:
-//			if ( param==1 )
-//				animatePageFlip(-1, onFinishHandler);
-//			else
+			if ( param==1 )
+				animatePageFlip(-1, onFinishHandler);
+			else
 				doEngineCommand(cmd, param, onFinishHandler);
 			break;
 		case DCMD_BEGIN:
@@ -2932,29 +2577,22 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			mActivity.showOptionsDialog(OptionsDialog.Mode.READER);
 			break;
 		case DCMD_READER_MENU:
-		    showDialogReaderMenu();
-//			mActivity.showReaderMenu();
+			mActivity.showReaderMenu();
 			break;
 		case DCMD_TOGGLE_DAY_NIGHT_MODE:
 			toggleDayNightMode();
 			break;
-		case DCMD_INTERLINE_SPACE_INCREASE:
-		    switchInterlineSpacing(1);
-		    break;
-		case DCMD_INTERLINE_SPACE_DECREASE:
-		    switchInterlineSpacing(-1);
-		    break;
 		}
 	}
-
 	boolean firstShowBrowserCall = true;
+	
+	
 	private TTSToolbarDlg ttsToolbar;
-
 	public void stopTTS() {
 		if (ttsToolbar != null)
 			ttsToolbar.pause();
 	}
-
+	
 	public void doEngineCommand( final ReaderCommand cmd, final int param )
 	{
 		doEngineCommand( cmd, param, null );
@@ -2962,7 +2600,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	public void doEngineCommand( final ReaderCommand cmd, final int param, final Runnable doneHandler )
 	{
 		BackgroundThread.ensureGUI();
-		L.d("doCommand("+cmd + ", " + param +")");
+		log.d("doCommand("+cmd + ", " + param +")");
 		post(new Task() {
 			boolean res;
 			boolean isMoveCommand;
@@ -3643,8 +3281,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 		return false;
 	}
 	
-	@SuppressLint("NewApi")
-    public boolean loadDocument( String fileName, final Runnable errorHandler )
+	public boolean loadDocument( String fileName, final Runnable errorHandler )
 	{
 		BackgroundThread.ensureGUI();
 		log.i("loadDocument(" + fileName + ")");
@@ -3706,80 +3343,6 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			fi = book.getFileInfo();
 			log.v("loadDocument() : item from history : " + fi);
 		}
-		
-		try {
-            OnyxMetadata data = new OnyxMetadata();
-            java.io.File file = new java.io.File(fi.getPathName());
-            
-            long time_point = System.currentTimeMillis();
-            String md5 = FileUtil.computeMD5(file);
-            long time_md5 = System.currentTimeMillis() - time_point;
-            Log.d(TAG, "times md5: " + time_md5);
-
-            data.setMD5(md5);
-            data.setName(file.getName());
-            data.setLocation(file.getAbsolutePath());
-            data.setNativeAbsolutePath(file.getAbsolutePath());
-            data.setSize(file.length());
-            data.setlastModified(new Date(file.lastModified()));
-            
-            Context ctx = this.getContext();
-            if (OnyxCmsCenter.getMetadata(ctx, data)) {
-                data.setTitle(fi.getTitle());
-                if (fi.getAuthors() != null) {
-                    String[] fi_authors = fi.getAuthors().split("\\|");
-                    if (fi_authors != null) {
-                        ArrayList<String> authors = new ArrayList<String>();
-                        for (String a : fi_authors) {
-                            authors.add(a);
-                        }
-                        data.setAuthors(authors);
-                    }
-                }
-                
-                OnyxCmsCenter.updateMetadata(ctx, data);
-            }
-            else {
-                data.setTitle(fi.getTitle());
-                if (fi.getAuthors() != null) {
-                    String[] fi_authors = fi.getAuthors().split("\\|");
-                    if (fi_authors != null) {
-                        ArrayList<String> authors = new ArrayList<String>();
-                        for (String a : fi_authors) {
-                            authors.add(a);
-                        }
-                        data.setAuthors(authors);
-                    }
-                }
-                
-                OnyxCmsCenter.insertMetadata(ctx, data);
-            }
-            
-            RefValue<Bitmap> result = new RefValue<Bitmap>();
-            if (!OnyxCmsCenter.getThumbnail(ctx, data, result)) {
-//                BitmapDrawable b = Services.getCoverpageManager().getBookCoverpageImage(null, fi);
-//                Log.d(TAG, "cover not null: " + (b != null));
-//                if (b != null) {
-//                    if (!OnyxCmsCenter.insertThumbnail(ctx, data, b.getBitmap())) {
-//                        Log.d(TAG, "insert thumbnail failed");
-//                    }
-//                    else {
-//                        Log.d(TAG, "insert thumbnail successfully");
-//                    }
-//                }
-            }
-            
-            
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            Log.w(TAG, "exception caught: ", e);
-            return false;
-        } catch (IOException e) {
-            e.printStackTrace();
-            Log.w(TAG, "exception caught: ", e);
-            return false;
-        } 
-		
 		return loadDocument(fi, errorHandler);
 	}
 	
@@ -4081,7 +3644,6 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			log.e("DrawPageTask.work("+internalDX+","+internalDY+")");
 			bi = preparePageImage(0);
 			if ( bi!=null ) {
-			    L.d("draw image in DrawPageTask");
 				draw(isPartially);
 			}
 		}
@@ -4096,9 +3658,6 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 //			}
 //    		if (mOpened)
    			//hideProgress();
-//
-//		    ReaderView.this.epdInvalidateHelper();
-//   		mEngine.hideProgress();
    			if ( doneHandler!=null )
    				doneHandler.run();
    			scheduleGc();
@@ -4603,7 +4162,6 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 						EinkScreen.PrepareController(this, isPartially);
 					}
 					callback.drawTo(canvas);
-					EpdController.invalidate(this, EpdController.UpdateMode.GU);
 				}
 			} finally {
 				//log.v("exiting finally");
@@ -5378,43 +4936,23 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 
 	private int currentProgressPosition = 1;
 	private int currentProgressTitle = R.string.progress_loading;
-	private DialogLoading mDialogLoading = null;
-
 	private void showProgress(int position, int titleResource) {
 		log.v("showProgress(" + position + ")");
-
-        if (currentProgressTitle == titleResource) {
-            if (mDialogLoading == null) {
-                mDialogLoading = new DialogLoading(mActivity, getResources().getString(currentProgressTitle));
-                mDialogLoading.show();
-            }
-            else {
-                if (!mDialogLoading.isShowing()) {
-                    mDialogLoading.show();
-                }
-            }
-        }else {
-            boolean first = currentProgressTitle == 0;
-            if (currentProgressPosition != position || currentProgressTitle != titleResource) {
-                currentProgressPosition = position;
-                currentProgressTitle = titleResource;
-                draw(!first);
-            }
-        }
+		boolean first = currentProgressTitle == 0;
+		if (currentProgressPosition != position || currentProgressTitle != titleResource) {
+			currentProgressPosition = position;
+			currentProgressTitle = titleResource;
+			draw(!first);
+		}
 	}
 	
 	private void hideProgress() {
 		log.v("hideProgress()");
-
-		if (mDialogLoading != null && mDialogLoading.isShowing()) {
-            mDialogLoading.dismiss();
-        }
-
-//		if (currentProgressTitle != 0) {
-//			currentProgressPosition = -1;
-//			currentProgressTitle = 0;
+		if (currentProgressTitle != 0) {
+			currentProgressPosition = -1;
+			currentProgressTitle = 0;
 			draw(false);
-//		}
+		}
 	}
 	
 	private boolean isProgressActive() {
@@ -5597,11 +5135,10 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	}
 	
 	private void drawDimmedBitmap( Canvas canvas, Bitmap bmp, Rect src, Rect dst ) {
-	    L.d("drawDimmedBitmap entered");
 		canvas.drawBitmap(bmp, src, dst, null);
 		dimRect( canvas, dst );
 	}
-
+	
 	protected void drawPageBackground(Canvas canvas, Rect dst, int side) {
 		Bitmap bmp = currentBackgroundTextureBitmap;
 		if (bmp != null) {
@@ -5736,7 +5273,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 //		rc.left = x;
 //		canvas.drawRect(rc2, createSolidPaint(0xFFC0C0A0));
 	}
-
+	
 	protected void doDraw(Canvas canvas)
 	{
        	try {
@@ -5744,8 +5281,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
     		if (isProgressActive()) {
         		log.d("onDraw() -- drawing progress " + (currentProgressPosition / 100));
         		drawPageBackground(canvas);
-//        		doDrawProgress(canvas, currentProgressPosition, currentProgressTitle);
-                showProgress(currentProgressPosition, currentProgressTitle);
+        		doDrawProgress(canvas, currentProgressPosition, currentProgressTitle);
     		} else if (mInitialized && mCurrentPageInfo != null && mCurrentPageInfo.bitmap != null) {
         		log.d("onDraw() -- drawing page image");
 
@@ -5786,8 +5322,6 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
         		log.d("onDraw() -- drawing empty screen");
         		drawPageBackground(canvas);
     		}
-
-    		drawBookmarkIcon(canvas);
     	} catch ( Exception e ) {
     		log.e("exception while drawing", e);
     	}
@@ -5815,7 +5349,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
     @Override 
     protected void onDraw(Canvas canvas) {
     	try {
-    		L.d("onDraw() called");
+    		log.d("onDraw() called");
     		draw();
     	} catch ( Exception e ) {
     		log.e("exception while drawing", e);
@@ -6258,16 +5792,10 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
     
     public void goToPage( int pageNumber )
     {
-        PositionProperties pos = doc.getPositionProps(null);
-        if (pageNumber <= pos.pageCount) {
-            BackgroundThread.ensureGUI();
-            doEngineCommand(ReaderView.ReaderCommand.DCMD_GO_PAGE, pageNumber-1);
-        }
-        else {
-            mActivity.showToast(R.string.toast_exceeds_pages, Toast.LENGTH_LONG);
-        }
+		BackgroundThread.ensureGUI();
+		doEngineCommand(ReaderView.ReaderCommand.DCMD_GO_PAGE, pageNumber-1);
     }
-
+    
     public void goToPercent( final int percent )
     {
 		BackgroundThread.ensureGUI();
@@ -6477,8 +6005,9 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
         });
 
         post(new CreateViewTask( props ));
-    }
 
+    }
+	
 	private void switchFontFace(int direction) {
 		String currentFontFace = mSettings.getProperty(PROP_FONT_FACE, "");
 		String[] mFontFaces = mEngine.getFontFaceList();
@@ -6568,451 +6097,4 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 		});
 	}
 
-	/**
-	 * @author qingyue
-	 * @param direction
-	 * settings interline space
-	 */
-	private void switchInterlineSpacing(int direction) {
-	    String currentInterlineSpace = mSettings.getProperty(PROP_INTERLINE_SPACE);
-	    String[] interlineSpaces = mActivity.getResources().getStringArray(R.array.interline_space);
-
-	    int index = 0;
-	    int countInterlineSpaces = interlineSpaces.length;
-
-	    for (int i = 0; i < countInterlineSpaces; i++) {
-	        if (interlineSpaces[i].equals(currentInterlineSpace)) {
-	            index = i;
-	            break;
-	        }
-	    }
-	    index += direction;
-	    if (index < 0) {
-	        index = countInterlineSpaces - 1;
-	    }
-	    else if (index >= countInterlineSpaces) {
-	        index = 0;
-	    }
-	    saveSetting(PROP_INTERLINE_SPACE, String.valueOf(interlineSpaces[index]));
-	    syncViewSettings(getSettings(), true, true);
-	}
-
-    /**
-     * @author qingyue
-     * @param property
-     */
-	private void switchInterlineSpacing(LineSpacingProperty property) {
-	    int line_spacing = 0;
-	    if (property == LineSpacingProperty.normal) {
-	        line_spacing = 100;
-	    }
-	    else if (property == LineSpacingProperty.big) {
-	        line_spacing = 130;
-	    }
-	    else if (property == LineSpacingProperty.small) {
-	        line_spacing = 80;
-	    }
-
-	    saveSetting(PROP_INTERLINE_SPACE, String.valueOf(line_spacing));
-	    syncViewSettings(getSettings(), true, true);
-	}
-
-    /**
-     * @author qingyue
-     */
-    private void showDialogReaderMenu()
-    {
-        final DialogReaderMenu.IMenuHandler menu_handler = new DialogReaderMenu.IMenuHandler()
-        {
-            
-            @Override
-            public void updateCurrentPage(LinearLayout l)
-            {
-                // TODO Auto-generated method stub
-                
-            }
-            
-            @Override
-            public void showTTsView()
-            {
-                mDialogReaderMenu.dismiss();
-
-                mActivity.initTTS(new TTS.OnTTSCreatedListener()
-                {
-
-                    @Override
-                    public void onCreated(TTS tts)
-                    {
-                        TTSToolbarDlg.showDialog(mActivity, ReaderView.this, tts);
-                    }
-                });
-            }
-            
-            @Override
-            public void showTOC()
-            {
-                ReaderView.this.showDirectoyDialog(DirectoryTab.toc);
-            }
-            
-            @Override
-            public void showSetFontView()
-            {
-                // TODO Auto-generated method stub
-                
-            }
-            
-            @Override
-            public void showLineSpacingView()
-            {
-                // TODO Auto-generated method stub
-                
-            }
-            
-            @Override
-            public void showBookMarks()
-            {
-                ReaderView.this.showDirectoyDialog(DirectoryTab.bookmark);
-            }
-            
-            @Override
-            public void setLineSpacing(LineSpacingProperty property)
-            {
-                switchInterlineSpacing(property);
-            }
-            
-            @Override
-            public void setFontFace()
-            {
-                String currentFontFace = mSettings.getProperty(PROP_FONT_FACE, "");
-                DialogFontFaceSettings font_face_dialog =
-                        new DialogFontFaceSettings(mActivity, mEngine.getFontFaceList(), currentFontFace, mDialogReaderMenu);
-                font_face_dialog.show();
-                font_face_dialog.setOnSettingsFontFaceListener(new onSettingsFontFaceListener()
-                {
-                    
-                    @Override
-                    public void settingfontFace(int location)
-                    {
-                        saveSetting(PROP_FONT_FACE, mEngine.getFontFaceList()[location]);
-                        syncViewSettings(getSettings(), true, true);
-                        
-                        mDialogReaderMenu.setButtonFontFaceText(mEngine.getFontFaceList()[location]);
-                    }
-                });
-            }
-            
-            @Override
-            public void searchContent()
-            {
-                ReaderView.this.showSearchDialog(null);
-            }
-            
-            @Override
-            public void rotationScreen(int i)
-            {
-                // TODO Auto-generated method stub
-                
-            }
-            
-            @Override
-            public void previousPage()
-            {
-                mCurrentOnyxTapHandler.performAction(ReaderAction.PAGE_UP, false);
-
-                PositionProperties pos = doc.getPositionProps(null);
-                mDialogReaderMenu.setPageIndex(pos.pageNumber + 1);
-                mDialogReaderMenu.setPageCount(pos.pageCount);
-            }
-
-            @Override
-            public void nextPage()
-            {
-                mCurrentOnyxTapHandler.performAction(ReaderAction.PAGE_DOWN, false);
-
-                PositionProperties pos = doc.getPositionProps(null);
-                mDialogReaderMenu.setPageIndex(pos.pageNumber + 1);
-                mDialogReaderMenu.setPageCount(pos.pageCount);
-            }
-            
-            @Override
-            public void increaseFontSize()
-            {
-                onAction(ReaderAction.ZOOM_IN);
-            }
-            
-            @Override
-            public void gotoPage(int i)
-            {
-                ReaderView.this.goToPage(i);
-                mDialogReaderMenu.dismiss();
-            }
-            
-            @Override
-            public int getPageIndex()
-            {
-                PositionProperties pos = doc.getPositionProps(null);
-                return pos.pageNumber + 1;
-            }
-            
-            @Override
-            public int getPageCount()
-            {
-                PositionProperties pos = doc.getPositionProps(null);
-                return pos.pageCount;
-            }
-            
-            @Override
-            public String getFontFace()
-            {
-                return mSettings.getProperty(PROP_FONT_FACE, "");
-            }
-            
-            @Override
-            public void decreaseFontSize()
-            {
-                onAction(ReaderAction.ZOOM_OUT);
-            }
-            
-            @Override
-            public void changeRotationScreen(RotationScreenProperty property)
-            {
-                if (property == RotationScreenProperty.rotation_0) {
-                    mDialogReaderMenu.dismiss();
-                    toggleScreenOrientation(0);
-                }
-                else if (property == RotationScreenProperty.rotation_90) {
-                    mDialogReaderMenu.dismiss();
-                    toggleScreenOrientation(3);
-                }
-                else if (property == RotationScreenProperty.rotation_180) {
-                    mDialogReaderMenu.dismiss();
-                    toggleScreenOrientation(2);
-                }
-                else if (property == RotationScreenProperty.rotation_270) {
-                    mDialogReaderMenu.dismiss();
-                    toggleScreenOrientation(1);
-                }
-            }
-            
-            @Override
-            public void changeFontsize(FontSizeProperty property)
-            {
-                // TODO Auto-generated method stub
-                
-            }
-            
-            @Override
-            public void toggleFontEmbolden()
-            {
-                // TODO Auto-generated method stub
-                
-            }
-
-            @Override
-            public void showGoToPageDialog()
-            {
-                DialogGotoPage dialogGotoPage = new DialogGotoPage(mActivity, mDialogReaderMenu);
-                dialogGotoPage.setAcceptNumberListener(new AcceptNumberListener()
-                {
-
-                    @Override
-                    public void onAcceptNumber(int num)
-                    {
-                        ReaderView.this.goToPage(num);
-                        mDialogReaderMenu.dismiss();
-                    }
-                });
-                dialogGotoPage.show();
-            }
-
-            @Override
-            public void zoomToPage()
-            {
-                // TODO Auto-generated method stub
-                
-            }
-
-            @Override
-            public void zoomToWidth()
-            {
-                // TODO Auto-generated method stub
-                
-            }
-
-            @Override
-            public void zoomToHeight()
-            {
-                // TODO Auto-generated method stub
-                
-            }
-
-            @Override
-            public void zoomBySelection()
-            {
-                // TODO Auto-generated method stub
-                
-            }
-
-            @Override
-            public void zoomByTwoPoints()
-            {
-                // TODO Auto-generated method stub
-                
-            }
-
-            @Override
-            public void zoomByValue(double z)
-            {
-                // TODO Auto-generated method stub
-                
-            }
-            
-            @Override
-            public void zoomIn()
-            {
-                // TODO Auto-generated method stub
-                
-            }
-            
-            @Override
-            public void zoomOut()
-            {
-                // TODO Auto-generated method stub
-                
-            }
-
-            @Override
-            public void showAnnotation()
-            {
-                ReaderView.this.showDirectoyDialog(DirectoryTab.annotation);
-            }
-
-            @Override
-            public void toggleFullscreen()
-            {
-                ReaderView.this.toggleFullscreen();
-                mDialogReaderMenu.dismiss();
-            }
-
-            @Override
-            public boolean showZoomSettings()
-            {
-                return false;
-            }
-
-            @Override
-            public boolean isFullscreen()
-            {
-                return mActivity.isFullscreen();
-            }
-
-            @Override
-            public void setScreenRefresh()
-            {
-                DialogScreenRefresh dlg = new DialogScreenRefresh(mActivity);
-                dlg.show();
-            }
-        };
-
-        mDialogReaderMenu = new DialogReaderMenu(mActivity, menu_handler);
-        mDialogReaderMenu.show();
-    }
-
-    /**
-     * @author qingyue
-     * @param orientation
-     */
-    private void toggleScreenOrientation(int orientation)
-    {
-        Properties settings = new Properties();
-        settings.put(PROP_APP_SCREEN_ORIENTATION, String.valueOf(orientation));
-        setSettings(settings, null, true, true);
-        mActivity.setScreenOrientation(orientation);
-    }
-
-    Bitmap mBookmarkBitmap = null;
-    int mBookmarkX = 0;
-    int mBookmarkY = 0;
-
-    /**
-     * @author qingyue
-     * @param canvas
-     * Drawing bookmark icon
-     */
-    private void drawBookmarkIcon(Canvas canvas) {
-        mBookmarkBitmap = android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.star_cancel);
-        if (doc != null && mBookInfo != null) {            
-            Bookmark bm = doc.getCurrentPageBookmark();
-            for (int i = 0; i < mBookInfo.getBookmarkCount(); i++) {
-                if (bm.getPosText().equals(mBookInfo.getBookmark(i).getPosText())) {
-                    mBookmarkBitmap = android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.star);
-                    break;
-                }
-            }
-        }
-
-        Paint paint = new Paint();
-        paint.setAlpha(100);
-        mBookmarkX = ReaderView.this.getWidth() - 80;
-        mBookmarkY = 15;
-        canvas.drawBitmap(mBookmarkBitmap, mBookmarkX, mBookmarkY, paint);
-    }
-
-    private void showDirectoyDialog(DirectoryTab tab)
-    {
-        TOCItem toc = doc.getTOC();
-        ArrayList<DirectoryItem> tocItems = new ArrayList<DirectoryItem>();
-        for (int i = 0; i < toc.getChildCount(); i++) {
-            TOCItem tocItem = toc.getChild(i);
-            DirectoryItem item = new DirectoryItem(tocItem.getName(), tocItem.getPage() + 1, tocItem);
-            tocItems.add(item);
-        }
-
-        BookInfo bookInfo = ReaderView.this.getBookInfo();
-        ArrayList<DirectoryItem> bookmarkItems = new ArrayList<DirectoryItem>();
-        for (int i = 0; i < bookInfo.getBookmarkCount(); i++) {
-            DirectoryItem bookmarkItem = new DirectoryItem(bookInfo.getBookmark(i).getPosText(), bookInfo.getBookmark(i).getBookmarkPage(), bookInfo.getBookmark(i));
-            bookmarkItems.add(bookmarkItem);
-        }
-
-        ArrayList<AnnotationItem> annotationItems = new ArrayList<AnnotationItem>();
-
-        final DialogDirectory.IGotoPageHandler gotoPageHandler = new DialogDirectory.IGotoPageHandler()
-        {
-
-            @Override
-            public void jumpTOC(DirectoryItem item)
-            {
-                TOCItem toc = (TOCItem) item.getTag();
-                ReaderView.this.goToPage(toc.getPage() + 1);
-            }
-
-            @Override
-            public void jumpBookmark(DirectoryItem item)
-            {
-                ReaderView.this.goToBookmark((Bookmark) item.getTag());
-            }
-
-            @Override
-            public void jumpAnnotation(DirectoryItem item)
-            {
-                // TODO Auto-generated method stub
-
-            }
-        };
-        DialogDirectory dialog = new DialogDirectory(mActivity, tocItems, bookmarkItems, annotationItems, gotoPageHandler, tab);
-        dialog.show();
-    }
-    
-    private void epdInvalidateHelper()
-    {
-        mPageRenderCount++;
-        if (mPageRenderCount >= DialogScreenRefresh.RENDER_RESET_MAX_TIME) {
-            EpdController.invalidate(this, UpdateMode.GC);
-            mPageRenderCount = 0;
-        }
-        else {
-            EpdController.invalidate(this, UpdateMode.GU);
-        }
-    }
 }

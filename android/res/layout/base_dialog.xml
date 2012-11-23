@@ -1,91 +1,84 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/base_dialog"
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/base_dialog" 
+    android:orientation="vertical"
     android:layout_width="fill_parent"
-    android:layout_height="fill_parent"
     android:minWidth="1200dip"
-    android:orientation="vertical" >
-
-    <LinearLayout
+    android:layout_height="fill_parent">
+	<LinearLayout 
         android:id="@+id/base_dlg_button_panel"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:minHeight="?android:attr/listPreferredItemHeight"
+	    android:layout_width="fill_parent"
+	    android:layout_height="wrap_content"
+	    android:minHeight="?android:attr/listPreferredItemHeight"
         android:minWidth="?android:attr/listPreferredItemHeight"
-        android:paddingRight="?android:attr/scrollbarSize" >
-
-        <ImageButton
-            android:id="@+id/base_dlg_btn_back"
+	    android:gravity="center_vertical"
+	    android:paddingRight="?android:attr/scrollbarSize"
+        android:background="#40404040"
+	    >
+        <ImageButton android:id="@+id/base_dlg_btn_back"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_centerVertical="true"
+            android:layout_marginTop="5dip"
             android:layout_marginBottom="5dip"
             android:layout_marginLeft="5dip"
             android:layout_marginRight="5dip"
-            android:layout_marginTop="5dip"
-            android:background="@null"
-            android:contentDescription="@string/dlg_button_back"
+            android:layout_centerVertical="true"
+            android:src="@drawable/cr3_button_prev"
             android:focusable="false"
             android:focusableInTouchMode="false"
-            android:src="@drawable/cr3_button_prev" />
-
-        <TextView
-            android:id="@+id/base_dlg_title"
+            android:background="@null"
+            android:contentDescription="@string/dlg_button_back"/>
+            />
+        <TextView android:id="@+id/base_dlg_title"
             style="@style/TextAppearance.Medium"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_centerVertical="true"
-            android:layout_marginBottom="4dip"
-            android:layout_marginLeft="4dip"
-            android:layout_marginRight="4dip"
             android:layout_marginTop="4dip"
+            android:layout_marginBottom="4dip"
+            android:layout_marginRight="4dip"
+            android:layout_marginLeft="4dip"
             android:layout_weight="1"
             android:singleLine="false"
             android:text="Test"
-            android:textColor="#000000" />
-
-        <ImageButton
-            android:id="@+id/base_dlg_btn_positive"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentRight="true"
             android:layout_centerVertical="true"
-            android:layout_marginBottom="5dip"
-            android:layout_marginLeft="5dip"
-            android:layout_marginRight="5dip"
-            android:layout_marginTop="5dip"
-            android:background="@null"
-            android:contentDescription="@string/dlg_button_ok"
-            android:focusable="false"
-            android:focusableInTouchMode="false"
-            android:src="@drawable/cr3_button_ok" />
             />
-
-        <ImageButton
-            android:id="@+id/base_dlg_btn_negative"
+        <ImageButton android:id="@+id/base_dlg_btn_positive"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="5dip"
             android:layout_marginBottom="5dip"
             android:layout_marginLeft="5dip"
             android:layout_marginRight="5dip"
-            android:layout_marginTop="5dip"
-            android:background="@null"
-            android:contentDescription="@string/dlg_button_cancel"
+            android:layout_centerVertical="true"
+            android:layout_alignParentRight="true"
+            android:src="@drawable/cr3_button_ok"
             android:focusable="false"
             android:focusableInTouchMode="false"
-            android:src="@drawable/cr3_button_cancel" />
+            android:background="@null"
+            android:contentDescription="@string/dlg_button_ok"/>
+            />
+        <ImageButton android:id="@+id/base_dlg_btn_negative"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dip"
+            android:layout_marginBottom="5dip"
+            android:layout_marginLeft="5dip"
+            android:layout_marginRight="5dip"
+            android:layout_centerVertical="true"
+            android:src="@drawable/cr3_button_cancel"
+            android:focusable="false"
+            android:focusableInTouchMode="false"
+            android:background="@null"
+            android:contentDescription="@string/dlg_button_cancel"/>
             />
     </LinearLayout>
-
-    <FrameLayout
-        android:id="@+id/base_dialog_content_view"
+    <FrameLayout android:id="@+id/base_dialog_content_view"
+        android:gravity="top"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
-        android:layout_marginLeft="0dip"
-        android:layout_marginRight="0dip"
         android:layout_weight="100"
-        android:gravity="top" >
+        android:layout_marginLeft="0dip"
+        android:layout_marginRight="0dip">
     </FrameLayout>
-
 </LinearLayout>

@@ -26,7 +26,6 @@
       android:layout_weight="1"
       android:singleLine="false"
       android:textAppearance="?android:attr/textAppearanceLarge"
-      android:textColor="#000000"
       android:maxLines="2" 
       android:layout_centerVertical="true"
     />

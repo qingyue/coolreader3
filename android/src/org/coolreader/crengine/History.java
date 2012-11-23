@@ -2,6 +2,7 @@ package org.coolreader.crengine;
 
 import java.util.ArrayList;
 
+import org.coolreader.CoolReader;
 import org.coolreader.db.CRDBService;
 
 import android.util.Log;

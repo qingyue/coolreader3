@@ -20,9 +20,9 @@ public class CRDBServiceAccessor {
     private MountPathCorrector pathCorrector;
 
     public CRDBService.LocalBinder get() {
-        if (mService == null)
-            throw new RuntimeException("no service");
-        return mService;
+    	if (mService == null)
+    		throw new RuntimeException("no service");
+    	return mService;
     }
     
 	public CRDBServiceAccessor(Activity activity, MountPathCorrector pathCorrector) {
