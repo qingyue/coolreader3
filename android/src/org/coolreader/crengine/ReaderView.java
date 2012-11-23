@@ -36,6 +36,12 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.widget.LinearLayout;
+
+import com.onyx.android.sdk.ui.dialog.DialogReaderMenu;
+import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.FontSizeProperty;
+import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.LineSpacingProperty;
+import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.RotationScreenProperty;
 
 public class ReaderView extends SurfaceView implements android.view.SurfaceHolder.Callback, Settings {
 
@@ -2577,7 +2583,8 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			mActivity.showOptionsDialog(OptionsDialog.Mode.READER);
 			break;
 		case DCMD_READER_MENU:
-			mActivity.showReaderMenu();
+//			mActivity.showReaderMenu();
+		    this.showDialogReaderMenu();
 			break;
 		case DCMD_TOGGLE_DAY_NIGHT_MODE:
 			toggleDayNightMode();
@@ -5979,6 +5986,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
     	gcTask.cancel();
     }
 
+    private DialogReaderMenu mReaderMenu = null;
 	public ReaderView(CoolReader activity, Engine engine, Properties props) 
     {
         super(activity);
@@ -6006,7 +6014,262 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 
         post(new CreateViewTask( props ));
 
+        DialogReaderMenu.IMenuHandler handler = new DialogReaderMenu.IMenuHandler()
+        {
+
+            @Override
+            public void zoomToWidth()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void zoomToPage()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void zoomToHeight()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void zoomOut()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void zoomIn()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void zoomByValue(double z)
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void zoomByTwoPoints()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void zoomBySelection()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void updateCurrentPage(LinearLayout l)
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void toggleFullscreen()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void toggleFontEmbolden()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public boolean showZoomSettings()
+            {
+                // TODO Auto-generated method stub
+                return false;
+            }
+
+            @Override
+            public void showTTsView()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void showTOC()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void showSetFontView()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void showLineSpacingView()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void showGoToPageDialog()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void showBookMarks()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void showAnnotation()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void setScreenRefresh()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void setLineSpacing(LineSpacingProperty property)
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void setFontFace()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void searchContent()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void rotationScreen(int i)
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void previousPage()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void nextPage()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public boolean isFullscreen()
+            {
+                // TODO Auto-generated method stub
+                return false;
+            }
+
+            @Override
+            public void increaseFontSize()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void gotoPage(int i)
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public int getPageIndex()
+            {
+                // TODO Auto-generated method stub
+                return 0;
+            }
+
+            @Override
+            public int getPageCount()
+            {
+                // TODO Auto-generated method stub
+                return 0;
+            }
+
+            @Override
+            public String getFontFace()
+            {
+                // TODO Auto-generated method stub
+                return null;
+            }
+
+            @Override
+            public void decreaseFontSize()
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void changeRotationScreen(RotationScreenProperty property)
+            {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void changeFontsize(FontSizeProperty property)
+            {
+                // TODO Auto-generated method stub
+
+            }
+        };
+
+        mReaderMenu = new DialogReaderMenu(mActivity, handler);
     }
+
+	private void showDialogReaderMenu()
+	{
+	    mReaderMenu.show();
+	}
 	
 	private void switchFontFace(int direction) {
 		String currentFontFace = mSettings.getProperty(PROP_FONT_FACE, "");
