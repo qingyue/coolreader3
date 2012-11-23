@@ -1390,6 +1390,17 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			} else if (event.getAction() == MotionEvent.ACTION_DOWN) {
 				switch (state) {
 				case STATE_INITIAL:
+				    if(x >= mBookmarkX && x < mBookmarkBitmap.getWidth() + mBookmarkX && y >= mBookmarkY && y < mBookmarkBitmap.getHeight()) {
+				        Bookmark bm = doc.getCurrentPageBookmark();
+				        for (int i = 0; i < mBookInfo.getBookmarkCount(); i++) {
+				            if (mBookInfo.getBookmark(i).getPosText().equals(bm.getPosText())) {
+				                removeBookmark(mBookInfo.getBookmark(i));
+				                return true;
+				            }
+				        }
+				        addBookmark(0);
+				        return true;
+				    }
 					start_x = x;
 					start_y = y;
 					width = getWidth();
@@ -5338,6 +5349,8 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
         		log.d("onDraw() -- drawing empty screen");
         		drawPageBackground(canvas);
     		}
+
+    	    drawBookmarkIcon(canvas);
     	} catch ( Exception e ) {
     		log.e("exception while drawing", e);
     	}
@@ -6457,10 +6470,10 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 
         BookInfo bookInfo = ReaderView.this.getBookInfo();
         ArrayList<DirectoryItem> bookmarkItems = new ArrayList<DirectoryItem>();
-//        for (int i = 0; i < bookInfo.getBookmarkCount(); i++) {
-//            DirectoryItem bookmarkItem = new DirectoryItem(bookInfo.getBookmark(i).getPosText(), bookInfo.getBookmark(i).getBookmarkPage(), bookInfo.getBookmark(i));
-//            bookmarkItems.add(bookmarkItem);
-//        }
+        for (int i = 0; i < bookInfo.getBookmarkCount(); i++) {
+            DirectoryItem bookmarkItem = new DirectoryItem(bookInfo.getBookmark(i).getPosText(), 0, bookInfo.getBookmark(i));
+            bookmarkItems.add(bookmarkItem);
+        }
 
         ArrayList<AnnotationItem> annotationItems = new ArrayList<AnnotationItem>();
 
@@ -6490,4 +6503,32 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
         DialogDirectory dialog = new DialogDirectory(mActivity, tocItems, bookmarkItems, annotationItems, gotoPageHandler, tab);
         dialog.show();
     }
+
+	Bitmap mBookmarkBitmap = null;
+	int mBookmarkX = 0;
+	int mBookmarkY = 0;
+
+	/**
+	 * @author qingyue
+	 * @param canvas
+	 * Drawing bookmark icon
+	 */
+	private void drawBookmarkIcon(Canvas canvas) {
+	    mBookmarkBitmap = android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.star_cancel);
+	    if (doc != null && mBookInfo != null) {
+	        Bookmark bm = doc.getCurrentPageBookmark();
+	        for (int i = 0; i < mBookInfo.getBookmarkCount(); i++) {
+	            if (bm.getPosText().equals(mBookInfo.getBookmark(i).getPosText())) {
+	                mBookmarkBitmap = android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.star);
+	                break;
+	            }
+	        }
+	    }
+
+	    Paint paint = new Paint();
+	    paint.setAlpha(120);
+	    mBookmarkX = ReaderView.this.getWidth() - 80;
+	    mBookmarkY = 15;
+	    canvas.drawBitmap(mBookmarkBitmap, mBookmarkX, mBookmarkY, paint);
+	}
 }
