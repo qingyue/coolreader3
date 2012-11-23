@@ -1348,135 +1348,76 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			return true;
 		}
 		
+		ReaderAction action = null;
 		public boolean onTouchEvent(MotionEvent event) {
-			int x = (int)event.getX();
-			int y = (int)event.getY();
-			
+		    int x = (int)event.getX();
+		    int y = (int)event.getY();
 
-			if (state == STATE_INITIAL && event.getAction() != MotionEvent.ACTION_DOWN)
-				return unexpectedEvent(); // ignore unexpected event
-			
-			if (event.getAction() == MotionEvent.ACTION_UP) {
-				long duration = Utils.timeInterval(firstDown);
-				switch (state) {
-				case STATE_DOWN_1:
-					if ( hiliteTapZoneOnTap ) {
-						hiliteTapZone( true, x, y, width, height );
-						scheduleUnhilite( LONG_KEYPRESS_TIME );
-					}
-					if (duration > LONG_KEYPRESS_TIME) {
-						if (longTapAction == ReaderAction.START_SELECTION)
-							return startSelection();
-						return performAction(longTapAction, true);
-					}
-					if (doubleTapAction.isNone())
-						return performAction(shortTapAction, false);
-					// start possible double tap tracking
-					return trackDoubleTap();
-				case STATE_FLIPPING:
-					stopAnimation(x, y);
-					state = STATE_DONE;
-					return cancel();
-				case STATE_BRIGHTNESS:
-					stopBrightnessControl(x, y);
-					state = STATE_DONE;
-					return cancel();
-				case STATE_SELECTION:
-					updateSelection( start_x, start_y, x, y, true );
-					selectionModeActive = false;
-					state = STATE_DONE;
-					return cancel();
-				}
-			} else if (event.getAction() == MotionEvent.ACTION_DOWN) {
-				switch (state) {
-				case STATE_INITIAL:
-				    if(x >= mBookmarkX && x < mBookmarkBitmap.getWidth() + mBookmarkX && y >= mBookmarkY && y < mBookmarkBitmap.getHeight()) {
-				        Bookmark bm = doc.getCurrentPageBookmark();
-				        for (int i = 0; i < mBookInfo.getBookmarkCount(); i++) {
-				            if (mBookInfo.getBookmark(i).getPosText().equals(bm.getPosText())) {
-				                removeBookmark(mBookInfo.getBookmark(i));
-				                return true;
-				            }
-				        }
-				        addBookmark(0);
-				        return true;
-				    }
-					start_x = x;
-					start_y = y;
-					width = getWidth();
-					height = getHeight();
-					int zone = getTapZone(x, y, width, height);
-					shortTapAction = findTapZoneAction(zone, TAP_ACTION_TYPE_SHORT);
-					longTapAction = findTapZoneAction(zone, TAP_ACTION_TYPE_LONGPRESS);
-					doubleTapAction = findTapZoneAction(zone, TAP_ACTION_TYPE_DOUBLE);
-					firstDown = Utils.timeStamp();
-					if (selectionModeActive) {
-						startSelection();
-					} else {
-						state = STATE_DOWN_1;
-						trackLongTap();
-					}
-					return true;
-				case STATE_DOWN_1:
-				case STATE_BRIGHTNESS:
-				case STATE_FLIPPING:
-				case STATE_SELECTION:
-					return unexpectedEvent();
-				case STATE_WAIT_FOR_DOUBLE_CLICK:
-					if (doubleTapAction == ReaderAction.START_SELECTION)
-						return startSelection();
-					return performAction(doubleTapAction, true);
-				}
-			} else if (event.getAction() == MotionEvent.ACTION_MOVE) {
-				int dx = x - start_x;
-				int dy = y - start_y;
-				int adx = dx > 0 ? dx : -dx;
-				int ady = dy > 0 ? dy : -dy;
-				int distance = adx + ady;
-				int dragThreshold = mActivity.getPalmTipPixels();
-				switch (state) {
-				case STATE_DOWN_1:
-					if (distance < dragThreshold)
-						return true;
-					if (!DeviceInfo.EINK_SCREEN && isBacklightControlFlick != BACKLIGHT_CONTROL_FLICK_NONE && ady > adx) {
-						// backlight control enabled
-						if (start_x < dragThreshold * 170 / 100 && isBacklightControlFlick == 1
-								|| start_x > width - dragThreshold * 170 / 100 && isBacklightControlFlick == 2) {
-							// brightness
-							state = STATE_BRIGHTNESS;
-							startBrightnessControl(start_x, start_y);
-							return true;
-						}
-					}
-					boolean isPageMode = mSettings.getInt(PROP_PAGE_VIEW_MODE, 1) == 1;
-					int dir = isPageMode ? x - start_x : y - start_y;
-					if (gesturePageFlippingEnabled) {
-						if (pageFlipAnimationSpeedMs == 0 || DeviceInfo.EINK_SCREEN) {
-							// no animation
-							return performAction(dir < 0 ? ReaderAction.PAGE_DOWN : ReaderAction.PAGE_UP, false);
-						}
-						startAnimation(start_x, start_y, width, height, x, y);
-						updateAnimation(x, y);
-						state = STATE_FLIPPING;
-					}
-					return true;
-				case STATE_FLIPPING:
-					updateAnimation(x, y);
-					return true;
-				case STATE_BRIGHTNESS:
-					updateBrightnessControl(x, y);
-					return true;
-				case STATE_WAIT_FOR_DOUBLE_CLICK:
-					return true;
-				case STATE_SELECTION:
-					updateSelection( start_x, start_y, x, y, false );
-					break;
-				}
-				
-			} else if (event.getAction() == MotionEvent.ACTION_OUTSIDE) {
-				return unexpectedEvent();
-			}
-			return true;
+		    if (state == STATE_INITIAL && event.getAction() != MotionEvent.ACTION_DOWN) {
+		        return unexpectedEvent(); // ignore unexpected event
+		    }
+
+		    if (event.getAction() == MotionEvent.ACTION_UP) {
+		        long duration = Utils.timeInterval(firstDown);
+		        if (duration > LONG_KEYPRESS_TIME) {
+		            startSelection();
+		            updateSelection( start_x, start_y, x, y, true );
+		            selectionModeActive = false;
+		            return true;
+		        }
+		        return performAction(shortTapAction, false);
+		    }
+		    else if (event.getAction() == MotionEvent.ACTION_DOWN) {
+		        start_x = x;
+		        start_y = y;
+		        width = getWidth();
+		        firstDown = Utils.timeStamp();
+
+		        if(x >= mBookmarkX && x < mBookmarkBitmap.getWidth() + mBookmarkX && y >= mBookmarkY && y < mBookmarkBitmap.getHeight()) {
+		            Bookmark bm = doc.getCurrentPageBookmark();
+		            for (int i = 0; i < mBookInfo.getBookmarkCount(); i++) {
+		                if (mBookInfo.getBookmark(i).getPosText().equals(bm.getPosText())) {
+		                    removeBookmark(mBookInfo.getBookmark(i));
+		                    return true;
+		                }
+		            }
+		            addBookmark(0);
+		            return true;
+		        }
+		        else if ((x * 3) <= width) {
+		            shortTapAction = ReaderAction.PAGE_UP;
+		        }
+		        else if (x <= ((width *2) / 3)) {
+		            shortTapAction = ReaderAction.READER_MENU;
+		        }
+		        else {
+		            shortTapAction = ReaderAction.PAGE_DOWN;
+		        }
+		        state = STATE_DOWN_1;
+
+		        return true;
+		    } else if (event.getAction() == MotionEvent.ACTION_MOVE) {
+		        int dx = x - start_x;
+		        int dy = y - start_y;
+		        int adx = dx > 0 ? dx : -dx;
+		        int ady = dy > 0 ? dy : -dy;
+		        int distance = adx + ady;
+		        int dragThreshold = mActivity.getPalmTipPixels();
+
+		        if (distance < dragThreshold) {
+		            return true;
+		        }
+
+		        boolean isPageMode = mSettings.getInt(PROP_PAGE_VIEW_MODE, 1) == 1;
+		        int dir = isPageMode ? x - start_x : y - start_y;
+		        if (pageFlipAnimationSpeedMs == 0 || DeviceInfo.EINK_SCREEN) {
+		            return performAction(dir < 0 ? ReaderAction.PAGE_DOWN : ReaderAction.PAGE_UP, false);
+		        }
+		    }
+		    else if (event.getAction() == MotionEvent.ACTION_OUTSIDE) {
+		        return unexpectedEvent();
+		    }
+		    return true;
 		}
 	}
 	
