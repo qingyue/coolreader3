@@ -597,8 +597,12 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 			keyDownTimestampMap.put(keyCode, System.currentTimeMillis());
 			
 			if (keyCode == KeyEvent.KEYCODE_BACK) {
-				// force saving position on BACK key press
-				scheduleSaveCurrentPositionBookmark(1);
+			    if (mActivity.isBookOpened()) {
+			        mActivity.finish();
+			        return true;
+			    }
+			    // force saving position on BACK key press
+			    scheduleSaveCurrentPositionBookmark(1);
 			}
 		}
 		if ( keyCode==KeyEvent.KEYCODE_POWER || keyCode==KeyEvent.KEYCODE_ENDCALL ) {
