@@ -1377,18 +1377,19 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 		        width = getWidth();
 		        firstDown = Utils.timeStamp();
 
-		        if(x >= mBookmarkX && x < mBookmarkBitmap.getWidth() + mBookmarkX && y >= mBookmarkY && y < mBookmarkBitmap.getHeight()) {
-		            Bookmark bm = doc.getCurrentPageBookmark();
-		            for (int i = 0; i < mBookInfo.getBookmarkCount(); i++) {
-		                if (mBookInfo.getBookmark(i).getPosText().equals(bm.getPosText())) {
-		                    removeBookmark(mBookInfo.getBookmark(i));
-		                    return true;
-		                }
-		            }
-		            addBookmark(0);
-		            return true;
-		        }
-		        else if ((x * 3) <= width) {
+//		        if(x >= mBookmarkX && x < mBookmarkBitmap.getWidth() + mBookmarkX && y >= mBookmarkY && y < mBookmarkBitmap.getHeight()) {
+//		            Bookmark bm = doc.getCurrentPageBookmark();
+//		            for (int i = 0; i < mBookInfo.getBookmarkCount(); i++) {
+//		                if (mBookInfo.getBookmark(i).getPosText().equals(bm.getPosText())) {
+//		                    removeBookmark(mBookInfo.getBookmark(i));
+//		                    return true;
+//		                }
+//		            }
+//		            addBookmark(0);
+//		            return true;
+//		        }
+
+		        if ((x * 3) <= width) {
 		            shortTapAction = ReaderAction.PAGE_UP;
 		        }
 		        else if (x <= ((width *2) / 3)) {
@@ -5295,7 +5296,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
         		drawPageBackground(canvas);
     		}
 
-    	    drawBookmarkIcon(canvas);
+//    	    drawBookmarkIcon(canvas);
     	} catch ( Exception e ) {
     		log.e("exception while drawing", e);
     	}
@@ -6449,31 +6450,31 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
         dialog.show();
     }
 
-	Bitmap mBookmarkBitmap = null;
-	int mBookmarkX = 0;
-	int mBookmarkY = 0;
-
-	/**
-	 * @author qingyue
-	 * @param canvas
-	 * Drawing bookmark icon
-	 */
-	private void drawBookmarkIcon(Canvas canvas) {
-	    mBookmarkBitmap = android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.star_cancel);
-	    if (doc != null && mBookInfo != null) {
-	        Bookmark bm = doc.getCurrentPageBookmark();
-	        for (int i = 0; i < mBookInfo.getBookmarkCount(); i++) {
-	            if (bm.getPosText().equals(mBookInfo.getBookmark(i).getPosText())) {
-	                mBookmarkBitmap = android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.star);
-	                break;
-	            }
-	        }
-	    }
-
-	    Paint paint = new Paint();
-	    paint.setAlpha(120);
-	    mBookmarkX = ReaderView.this.getWidth() - 80;
-	    mBookmarkY = 15;
-	    canvas.drawBitmap(mBookmarkBitmap, mBookmarkX, mBookmarkY, paint);
-	}
+//	Bitmap mBookmarkBitmap = null;
+//	int mBookmarkX = 0;
+//	int mBookmarkY = 0;
+//
+//	/**
+//	 * @author qingyue
+//	 * @param canvas
+//	 * Drawing bookmark icon
+//	 */
+//	private void drawBookmarkIcon(Canvas canvas) {
+//	    mBookmarkBitmap = android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.star_cancel);
+//	    if (doc != null && mBookInfo != null) {
+//	        Bookmark bm = doc.getCurrentPageBookmark();
+//	        for (int i = 0; i < mBookInfo.getBookmarkCount(); i++) {
+//	            if (bm.getPosText().equals(mBookInfo.getBookmark(i).getPosText())) {
+//	                mBookmarkBitmap = android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.star);
+//	                break;
+//	            }
+//	        }
+//	    }
+//
+//	    Paint paint = new Paint();
+//	    paint.setAlpha(120);
+//	    mBookmarkX = ReaderView.this.getWidth() - 80;
+//	    mBookmarkY = 15;
+//	    canvas.drawBitmap(mBookmarkBitmap, mBookmarkX, mBookmarkY, paint);
+//	}
 }
