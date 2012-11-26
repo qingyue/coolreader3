@@ -186,16 +186,17 @@ public class CoolReader extends BaseActivity
 //		mFrame.addView(startupView);
 //        log.i("initializing browser");
 //        log.i("initializing reader");
-//        
-//        fileToLoadOnStart = null;
-//		Intent intent = getIntent();
-//		if ( intent!=null && Intent.ACTION_VIEW.equals(intent.getAction()) ) {
-//			Uri uri = intent.getData();
-//			if ( uri!=null ) {
-//				fileToLoadOnStart = extractFileName(uri);
-//			}
-//			intent.setData(null);
-//		}
+
+        mReaderView = new ReaderView(this, mEngine, loadSettings(0));
+        fileToLoadOnStart = null;
+        Intent intent = getIntent();
+        if ( intent!=null && Intent.ACTION_VIEW.equals(intent.getAction()) ) {
+            Uri uri = intent.getData();
+            if ( uri!=null ) {
+                fileToLoadOnStart = extractFileName(uri);
+            }
+            intent.setData(null);
+        }
         
 		showRootWindow();
 		
@@ -535,6 +536,11 @@ public class CoolReader extends BaseActivity
 //				Services.getEngine().execute(new LoadLastDocumentTask(fileName));
 //			}
 //		});
+
+		if (mReaderView != null && fileName != null) {
+		    this.loadDocument(new FileInfo(fileName));
+		}
+
 		log.i("CoolReader.onStart() exiting");
 	}
 	
