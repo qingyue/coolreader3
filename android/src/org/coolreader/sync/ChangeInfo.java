@@ -42,6 +42,7 @@ public class ChangeInfo implements Comparable<ChangeInfo> {
 	public final static String TITLE_TEXT_TAG = "TITLETEXT"; 
 	public final static String POS_TEXT_TAG = "POSTEXT"; 
 	public final static String COMMENT_TEXT_TAG = "COMMENTTEXT";
+	public final static String PAGE_TAG = "PAGE";
 	
 	@Override
 	public String toString() {
@@ -70,6 +71,8 @@ public class ChangeInfo implements Comparable<ChangeInfo> {
 			buf.append(POS_TEXT_TAG).append('=').append(encodeText(bookmark.getPosText()));
 			buf.append('\n');
 			buf.append(COMMENT_TEXT_TAG).append('=').append(encodeText(bookmark.getCommentText()));
+			buf.append('\n');
+			buf.append(PAGE_TAG).append('=').append(bookmark.getPage());
 			buf.append('\n');
 		}
 		buf.append(END_TAG);
@@ -175,6 +178,8 @@ public class ChangeInfo implements Comparable<ChangeInfo> {
 					bmk.setPosText(decodeText(value));
 				} else if (COMMENT_TEXT_TAG.equals(name)) {
 					bmk.setCommentText(decodeText(value));
+				} else if (PAGE_TAG.equals(name)) {
+				    bmk.setPage(Integer.valueOf(value));
 				}
 			}
 			if (bmk.isValid())

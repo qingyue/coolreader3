@@ -19,6 +19,7 @@ public class Bookmark {
 		posText=v.posText;
 		commentText=v.commentText;
 		timeStamp=v.timeStamp;
+		page = v.page;
 	}
 	
 	@Override
@@ -38,6 +39,7 @@ public class Bookmark {
 		result = prime * result
 				+ ((titleText == null) ? 0 : titleText.hashCode());
 		result = prime * result + type;
+		result = prime * result + page;
 		return result;
 	}
 
@@ -88,6 +90,8 @@ public class Bookmark {
 			return false;
 		if (type != other.type)
 			return false;
+	    if (page != other.page)
+	        return false;
 		return true;
 	}
 
@@ -200,6 +204,15 @@ public class Bookmark {
 		this.id = id;
 	}
 
+	public int getPage()
+	{
+	    return page;
+	}
+	public void setPage(int page)
+	{
+	    this.page = page;
+	}
+
 	public boolean isValid() {
 		if (startPos == null || startPos.length() == 0)
 			return false;
@@ -224,6 +237,7 @@ public class Bookmark {
 	private String posText;
 	private String commentText;
 	private long timeStamp = System.currentTimeMillis(); // UTC timestamp
+	private int page;
 	@Override
 	public String toString() {
 		return "Bookmark[t=" + type + ", start=" + startPos + "]";

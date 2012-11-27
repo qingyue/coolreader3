@@ -1668,6 +1668,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 				BackgroundThread.ensureBackground();
 				if ( mBookInfo!=null ) {
 					bm = doc.getCurrentPageBookmark();
+					bm.setPage(doc.getPositionProps(null).pageNumber + 1);
 					bm.setShortcut(shortcut);
 				}
 			}
@@ -6424,7 +6425,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
         BookInfo bookInfo = ReaderView.this.getBookInfo();
         ArrayList<DirectoryItem> bookmarkItems = new ArrayList<DirectoryItem>();
         for (int i = 0; i < bookInfo.getBookmarkCount(); i++) {
-            DirectoryItem bookmarkItem = new DirectoryItem(bookInfo.getBookmark(i).getPosText(), 0, bookInfo.getBookmark(i));
+            DirectoryItem bookmarkItem = new DirectoryItem(bookInfo.getBookmark(i).getPosText(), bookInfo.getBookmark(i).getPage(), bookInfo.getBookmark(i));
             bookmarkItems.add(bookmarkItem);
         }
 

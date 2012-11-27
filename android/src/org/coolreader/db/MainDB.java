@@ -21,7 +21,6 @@ import android.database.Cursor;
 import android.database.DatabaseUtils;
 import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteStatement;
-import android.text.TextUtils.SimpleStringSplitter;
 import android.util.Log;
 
 public class MainDB extends BaseDB {
@@ -98,7 +97,8 @@ public class MainDB extends BaseDB {
 					"end_pos VARCHAR," +
 					"title_text VARCHAR," +
 					"pos_text VARCHAR," +
-					"comment_text VARCHAR" +
+					"comment_text VARCHAR," +
+					"page INTEGER DEFAULT 1" +
 					")");
 			execSQL("CREATE INDEX IF NOT EXISTS " +
 			"bookmark_book_index ON bookmark (book_fk) ");
@@ -297,7 +297,7 @@ public class MainDB extends BaseDB {
 	private static final String READ_BOOKMARK_SQL = 
 		"SELECT " +
 		"id, type, percent, shortcut, time_stamp, " + 
-		"start_pos, end_pos, title_text, pos_text, comment_text " +
+		"start_pos, end_pos, title_text, pos_text, comment_text, page " +
 		"FROM bookmark b ";
 	private void readBookmarkFromCursor( Bookmark v, Cursor rs )
 	{
@@ -312,6 +312,7 @@ public class MainDB extends BaseDB {
 		v.setTitleText( rs.getString(i++) );
 		v.setPosText( rs.getString(i++) );
 		v.setCommentText( rs.getString(i++) );
+		v.setPage( (int)rs.getLong(i++) );
 	}
 
 	public boolean findBy( Bookmark v, String condition ) {
@@ -1214,6 +1215,7 @@ public class MainDB extends BaseDB {
 			add("pos_text", newValue.getPosText(), oldValue.getPosText());
 			add("comment_text", newValue.getCommentText(), oldValue.getCommentText());
 			add("time_stamp", newValue.getTimeStamp(), oldValue.getTimeStamp());
+			add("page", newValue.getPage(), oldValue.getPage());
 		}
 	}
 
