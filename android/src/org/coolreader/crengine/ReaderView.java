@@ -46,6 +46,7 @@ import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings;
 import com.onyx.android.sdk.ui.dialog.DialogFontFaceSettings.onSettingsFontFaceListener;
 import com.onyx.android.sdk.ui.dialog.DialogGotoPage;
 import com.onyx.android.sdk.ui.dialog.DialogGotoPage.AcceptNumberListener;
+import com.onyx.android.sdk.ui.dialog.DialogLoading;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.FontSizeProperty;
 import com.onyx.android.sdk.ui.dialog.DialogReaderMenu.LineSpacingProperty;
@@ -1318,7 +1319,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 						BookmarkEditDialog dlg = new BookmarkEditDialog(mActivity, ReaderView.this, bookmark, false);
 						dlg.show();
 					} else {
-						updateSelection( start_x, start_y, start_x, start_y, false );
+						updateSelection( start_x, start_y, start_x, start_y, true );
 					}
 				}
 			});
@@ -1365,7 +1366,6 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 		        long duration = Utils.timeInterval(firstDown);
 		        if (duration > LONG_KEYPRESS_TIME) {
 		            startSelection();
-		            updateSelection( start_x, start_y, x, y, true );
 		            selectionModeActive = false;
 		            return true;
 		        }
@@ -1652,11 +1652,12 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	}
 	
 	public void addBookmark(final Bookmark bookmark) {
-		mBookInfo.addBookmark(bookmark);
-		getSyncService().saveBookmark(mBookInfo.getFileInfo().getPathName(), bookmark, false);
-        highlightBookmarks();
-        scheduleSaveCurrentPositionBookmark(DEF_SAVE_POSITION_INTERVAL);
-    }
+	    bookmark.setPage(doc.getPositionProps(null).pageNumber + 1);
+	    mBookInfo.addBookmark(bookmark);
+	    getSyncService().saveBookmark(mBookInfo.getFileInfo().getPathName(), bookmark, false);
+	    highlightBookmarks();
+	    scheduleSaveCurrentPositionBookmark(DEF_SAVE_POSITION_INTERVAL);
+	}
 	
 	public void addBookmark( final int shortcut )
 	{
@@ -5260,9 +5261,10 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
     		if (isProgressActive()) {
         		log.d("onDraw() -- drawing progress " + (currentProgressPosition / 100));
         		drawPageBackground(canvas);
-        		doDrawProgress(canvas, currentProgressPosition, currentProgressTitle);
+        		showLoadingDialog();
     		} else if (mInitialized && mCurrentPageInfo != null && mCurrentPageInfo.bitmap != null) {
         		log.d("onDraw() -- drawing page image");
+        		hideLoadingDialog();
 
         		if (currentAutoScrollAnimation != null) {
         			currentAutoScrollAnimation.draw(canvas);
@@ -5963,6 +5965,7 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
     }
 
     private DialogReaderMenu mReaderMenu = null;
+    private DialogLoading mDialogLoading = null;
 	public ReaderView(CoolReader activity, Engine engine, Properties props) 
     {
         super(activity);
@@ -6485,5 +6488,22 @@ public class ReaderView extends SurfaceView implements android.view.SurfaceHolde
 	    mBookmarkX = ReaderView.this.getWidth() - 80;
 	    mBookmarkY = 15;
 	    canvas.drawBitmap(mBookmarkBitmap, mBookmarkX, mBookmarkY, paint);
+	}
+
+	private void showLoadingDialog()
+	{
+	    if (mDialogLoading == null) {
+	        mDialogLoading = new DialogLoading(mActivity, getResources().getString(currentProgressTitle));
+	        mDialogLoading.show();
+	    } else if (!mDialogLoading.isShowing()) {
+	        mDialogLoading.show();
+	    }
+	}
+
+	private void hideLoadingDialog()
+	{
+	    if (mDialogLoading != null && mDialogLoading.isShowing()) {
+	        mDialogLoading.dismiss();
+	    }
 	}
 }
