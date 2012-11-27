@@ -32,6 +32,7 @@ public class DeviceInfo {
 	public final static boolean USE_BITMAP_MEMORY_HACK; // revert volume keys in landscape mode
 	public final static Integer DEF_FONT_SIZE;
 	public final static boolean ONE_COLUMN_IN_LANDSCAPE;
+	public final static boolean EINK_BOOX;
 	
 	// minimal screen backlight level percent for different devices
 	private static final String[] MIN_SCREEN_BRIGHTNESS_DB = {
@@ -94,7 +95,8 @@ public class DeviceInfo {
 		EINK_NOOK = MANUFACTURER.toLowerCase().contentEquals("barnesandnoble") && MODEL.contentEquals("NOOK") &&
 				DEVICE.toLowerCase().contentEquals("zoom2");
 		EINK_SONY = MANUFACTURER.toLowerCase().contentEquals("sony") && MODEL.startsWith("PRS-T");
-		EINK_SCREEN = EINK_SONY || EINK_NOOK; // TODO: set to true for eink devices like Nook Touch
+		EINK_BOOX = true;
+		EINK_SCREEN = EINK_SONY || EINK_NOOK || EINK_BOOX; // TODO: set to true for eink devices like Nook Touch
 
 		POCKETBOOK = MODEL.toLowerCase().startsWith("pocketbook") || MODEL.toLowerCase().startsWith("obreey");
 		
